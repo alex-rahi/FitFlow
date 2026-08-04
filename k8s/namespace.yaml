@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gymtok
+  labels:
+    app.kubernetes.io/name: gymtok
+    app.kubernetes.io/part-of: gymtok-platform

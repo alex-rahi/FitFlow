@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gymtok-ingress
+  namespace: gymtok
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+    - hosts:
+        - api.gymtok.app
+        - admin.gymtok.app
+        - cdn.gymtok.app
+      secretName: gymtok-tls
+  rules:
+    - host: api.gymtok.app
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gymtok-api
+                port:
+                  number: 80
+    - host: admin.gymtok.app
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gymtok-admin
+                port:
+                  number: 80

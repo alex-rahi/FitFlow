@@ -1,0 +1,44 @@
+# Business Rules Engine Configuration
+# Thresholds and model versions for content moderation decisions
+
+model_versions:
+  yolo: "yolov8n-gym-v1.0"
+  moderation: "gymtok-moderation-v2.1"
+  safety: "gymtok-safety-v1.0"
+
+thresholds:
+  moderation_reject: 0.9
+  moderation_flag: 0.7
+  safety_flag: 0.6
+  nudity_age_restrict_min: 0.4
+  nudity_age_restrict_max: 0.7
+  min_trust_for_auto_publish: 20
+  new_account_days: 7
+  max_prior_violations: 3
+
+gym_objects:
+  - person
+  - dumbbell
+  - bench
+  - squat rack
+  - barbell
+  - kettlebell
+  - treadmill
+  - exercise bike
+  - pull-up bar
+  - resistance band
+
+moderation_categories:
+  - explicit_content
+  - violence_gore
+  - nudity
+  - hate_harassment
+  - unsafe_activity
+
+outcome_priority:
+  reject: 6
+  manual_review: 5
+  flag_for_review: 4
+  age_restrict: 3
+  approve: 2
+  publish: 1

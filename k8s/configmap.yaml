@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gymtok-config
+  namespace: gymtok
+data:
+  BACKEND_HOST: "0.0.0.0"
+  BACKEND_PORT: "8000"
+  CORS_ORIGINS: "https://admin.gymtok.app,https://api.gymtok.app"
+  STORAGE_BUCKET_RAW: "raw-uploads"
+  STORAGE_BUCKET_PROCESSED: "processed-videos"
+  STORAGE_BUCKET_THUMBNAILS: "thumbnails"
+  WORKER_POLL_INTERVAL: "5"
+  FRAME_EXTRACT_INTERVAL: "2"
+  MODERATION_THRESHOLD: "0.7"
+  CDN_BASE_URL: "https://cdn.gymtok.app"
+  USE_PLACEHOLDERS: "false"

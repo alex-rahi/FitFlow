@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GymTok — Splash Screen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gymtok-red: #e63946;
+      --gymtok-red-hover: #d62839;
+      --gymtok-red-pressed: #c1121f;
+      --matte-black: #0a0a0a;
+      --surface-overlay: rgba(10, 10, 10, 0.72);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.72);
+      --text-muted: rgba(255, 255, 255, 0.48);
+      --border-subtle: rgba(255, 255, 255, 0.18);
+      --radius-lg: 16px;
+      --radius-xl: 28px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      background: #111;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100dvh;
+      padding: 24px;
+    }
+
+    .device-frame {
+      position: relative;
+      width: min(393px, 100%);
+      height: min(852px, calc(100dvh - 48px));
+      border-radius: 54px;
+      padding: 12px;
+      background: linear-gradient(145deg, #3a3a3c 0%, #1c1c1e 40%, #2c2c2e 100%);
+      box-shadow:
+        0 40px 80px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .device-screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      border-radius: 44px;
+      background: var(--matte-black);
+      color: var(--text-primary);
+    }
+
+    .background {
+      position: absolute;
+      inset: 0;
+      background:
+        url("../assets/gym-background-blur.jpg") center / cover no-repeat,
+        radial-gradient(ellipse 120% 80% at 50% 20%, rgba(230, 57, 70, 0.14), transparent 55%),
+        linear-gradient(180deg, rgba(10, 10, 10, 0.35) 0%, rgba(10, 10, 10, 0.82) 55%, rgba(10, 10, 10, 0.94) 100%);
+      transform: scale(1.06);
+      filter: blur(0.5px) saturate(1.05);
+    }
+
+    .background::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      backdrop-filter: blur(2px);
+      background: var(--surface-overlay);
+    }
+
+    .status-bar {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px 0;
+      padding-top: calc(14px + var(--safe-top));
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .status-bar .time {
+      width: 54px;
+    }
+
+    .dynamic-island {
+      width: 126px;
+      height: 36px;
+      border-radius: 20px;
+      background: #000;
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 54px;
+      justify-content: flex-end;
+    }
+
+    .status-icons svg {
+      display: block;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      height: calc(100% - 62px - var(--safe-top));
+      padding: 32px 28px calc(24px + var(--safe-bottom));
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-top: 12px;
+      margin-bottom: auto;
+    }
+
+    .monogram {
+      width: 72px;
+      height: 72px;
+      margin-bottom: 18px;
+    }
+
+    .app-name {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .tagline {
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      width: 100%;
+      min-height: 56px;
+      border-radius: var(--radius-lg);
+      font: inherit;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+    }
+
+    .btn:active {
+      transform: scale(0.985);
+    }
+
+    .btn-primary {
+      background: var(--gymtok-red);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--gymtok-red-hover);
+    }
+
+    .btn-primary:active {
+      background: var(--gymtok-red-pressed);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #fff;
+      border: 1.5px solid var(--border-subtle);
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .signup-link {
+      align-self: center;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 8px;
+      margin-top: -4px;
+    }
+
+    .signup-link:hover {
+      color: var(--text-secondary);
+    }
+
+    .signup-link span {
+      color: var(--gymtok-red);
+      font-weight: 600;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .feature {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 4px;
+      opacity: 0.72;
+    }
+
+    .feature-icon {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+    }
+
+    .feature-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.01em;
+    }
+
+    .home-indicator {
+      position: absolute;
+      left: 50%;
+      bottom: calc(8px + var(--safe-bottom));
+      transform: translateX(-50%);
+      width: 134px;
+      height: 5px;
+      border-radius: 100px;
+      background: rgba(255, 255, 255, 0.28);
+      z-index: 3;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="device-frame" role="img" aria-label="GymTok splash screen on iPhone">
+    <div class="device-screen">
+      <div class="background" aria-hidden="true"></div>
+
+      <header class="status-bar" aria-hidden="true">
+        <span class="time">9:41</span>
+        <div class="dynamic-island"></div>
+        <div class="status-icons">
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="none" aria-hidden="true">
+            <rect x="0" y="8" width="3" height="4" rx="0.8" fill="white"/>
+            <rect x="5" y="5.5" width="3" height="6.5" rx="0.8" fill="white"/>
+            <rect x="10" y="3" width="3" height="9" rx="0.8" fill="white"/>
+            <rect x="15" y="0" width="3" height="12" rx="0.8" fill="white"/>
+          </svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true">
+            <path d="M8 2.4C10.2 2.4 12.2 3.3 13.7 4.8L15.1 3.4C13.2 1.5 10.7 0.4 8 0.4C5.3 0.4 2.8 1.5 0.9 3.4L2.3 4.8C3.8 3.3 5.8 2.4 8 2.4Z" fill="white"/>
+            <path d="M8 5.6C9.4 5.6 10.7 6.1 11.7 7L13.1 5.6C11.6 4.1 9.9 3.2 8 3.2C6.1 3.2 4.4 4.1 2.9 5.6L4.3 7C5.3 6.1 6.6 5.6 8 5.6Z" fill="white"/>
+            <circle cx="8" cy="10.4" r="1.6" fill="white"/>
+          </svg>
+          <svg width="27" height="13" viewBox="0 0 27 13" fill="none" aria-hidden="true">
+            <rect x="0.5" y="0.5" width="22" height="12" rx="3.5" stroke="white" stroke-opacity="0.35"/>
+            <rect x="2" y="2" width="17" height="9" rx="2" fill="white"/>
+            <path d="M24 4.5V8.5C25 8 25.5 7 25.5 6.5C25.5 6 25 5 24 4.5Z" fill="white" fill-opacity="0.4"/>
+          </svg>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="brand" aria-labelledby="app-title">
+          <svg class="monogram" viewBox="0 0 72 72" fill="none" aria-hidden="true">
+            <rect width="72" height="72" rx="18" fill="rgba(255,255,255,0.06)"/>
+            <path d="M22 48V24H30.5C34.2 24 36.8 25.4 36.8 28.6C36.8 31.1 35.3 32.8 32.8 33.4V33.6C36 34.1 38 36.1 38 39.2C38 43.1 34.8 45.5 30.2 45.5H22V48ZM28.4 32.4H30.1C31.8 32.4 32.8 31.6 32.8 30.2C32.8 28.8 31.8 28 30.1 28H28.4V32.4ZM28.4 41.8H30.4C32.3 41.8 33.4 40.8 33.4 39.1C33.4 37.4 32.3 36.4 30.4 36.4H28.4V41.8Z" fill="white"/>
+            <path d="M42 48L48.2 24H54.8L61 48H54.8L53.6 43.2H46.4L45.2 48H42ZM47.5 38.4H52.5L50 27.2L47.5 38.4Z" fill="#E63946"/>
+          </svg>
+          <h1 id="app-title" class="app-name">GymTok</h1>
+          <p class="tagline">Train. Share. Inspire.</p>
+        </section>
+
+        <section class="actions" aria-label="Authentication">
+          <button type="button" class="btn btn-primary">Get Started</button>
+          <button type="button" class="btn btn-secondary">Log In</button>
+          <button type="button" class="signup-link">New here? <span>Sign Up</span></button>
+        </section>
+
+        <nav class="features" aria-label="App features">
+          <div class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M12 16V8M12 8L9 11M12 8L15 11" stroke="#E63946" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="4" y="16" width="16" height="4" rx="1.5" stroke="white" stroke-opacity="0.55" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <span class="feature-label">Upload</span>
+          </div>
+          <div class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M6.5 10H4V14H6.5M17.5 10H20V14H17.5M8 12H16" stroke="white" stroke-opacity="0.55" stroke-width="1.75" stroke-linecap="round"/>
+                <rect x="6.5" y="9" width="3" height="6" rx="1" fill="#E63946"/>
+                <rect x="14.5" y="9" width="3" height="6" rx="1" fill="#E63946"/>
+              </svg>
+            </div>
+            <span class="feature-label">Workouts</span>
+          </div>
+          <div class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="9" cy="9" r="2.5" stroke="white" stroke-opacity="0.55" stroke-width="1.5"/>
+                <circle cx="16" cy="10" r="2" stroke="white" stroke-opacity="0.55" stroke-width="1.5"/>
+                <path d="M4.5 18C4.5 15.5 6.4 14 9 14C11.1 14 12.4 15 13 16.2" stroke="white" stroke-opacity="0.55" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M13.5 17.5C14.2 16.2 15.4 15.5 16.8 15.5C18.8 15.5 20.5 16.8 20.5 18.5" stroke="#E63946" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="feature-label">Community</span>
+          </div>
+          <div class="feature">
+            <div class="feature-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <rect x="4" y="14" width="3" height="6" rx="1" fill="white" fill-opacity="0.35"/>
+                <rect x="10" y="10" width="3" height="10" rx="1" fill="white" fill-opacity="0.55"/>
+                <rect x="16" y="6" width="3" height="14" rx="1" fill="#E63946"/>
+                <path d="M4 8L10 11L16 7L20 9" stroke="#E63946" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="feature-label">Progress</span>
+          </div>
+        </nav>
+      </main>
+
+      <div class="home-indicator" aria-hidden="true"></div>
+    </div>
+  </div>
+</body>
+</html>

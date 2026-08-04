@@ -1,0 +1,36 @@
+# CDN configuration for serving approved media globally
+# Compatible with CloudFront, Cloudflare, or Fastly
+
+provider: cloudfront  # cloudfront | cloudflare | fastly
+
+origin:
+  bucket: processed-videos
+  thumbnails_bucket: thumbnails
+  # Supabase Storage or S3-compatible origin
+  origin_domain: your-project.supabase.co
+
+cdn:
+  domain: cdn.gymtok.app
+  cache_ttl_seconds: 86400
+  signed_urls: true
+  signing_key_id: ${CDN_SIGNING_KEY_ID}
+  signing_key: ${CDN_SIGNING_KEY}
+
+behaviors:
+  - path: "/videos/*"
+    ttl: 86400
+    compress: true
+    allowed_methods: [GET, HEAD]
+  - path: "/thumbnails/*"
+    ttl: 604800
+    compress: true
+    allowed_methods: [GET, HEAD]
+
+geo_restrictions:
+  enabled: false
+  # whitelist: [US, CA, GB, AU]
+
+# Age-restricted content served via signed URLs with age verification token
+age_restricted:
+  require_token: true
+  token_ttl_seconds: 3600
