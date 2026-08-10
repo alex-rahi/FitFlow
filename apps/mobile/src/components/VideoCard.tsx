@@ -1,6 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, ActivityIndicator } from 'react-native';
+import { createElement } from 'react';
 import { getCategoryLabel } from '../constants/categories';
-import { Colors, Spacing } from '../constants/theme';
+import { resolvePlaybackUrl } from '../lib/videoUrl';
+import { Colors, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -13,6 +16,9 @@ export interface VideoPost {
   created_at?: string;
   like_count: number;
   comment_count: number;
+  raw_video_url?: string | null;
+  processed_video_url?: string | null;
+  thumbnail_url?: string | null;
   author?: { username?: string; display_name?: string };
 }
 
@@ -23,17 +29,67 @@ interface VideoCardProps {
   onComment?: () => void;
 }
 
+function WebVideo({ uri }: { uri: string }) {
+  return createElement('video', {
+    src: uri,
+    autoPlay: true,
+    loop: true,
+    muted: true,
+    playsInline: true,
+    controls: true,
+    style: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      backgroundColor: '#000',
+    },
+  });
+}
+
 export function VideoCard({ post, index, onLike, onComment }: VideoCardProps) {
   const categoryLabel = getCategoryLabel(post.category);
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS);
+
+  useEffect(() => {
+    let active = true;
+    if (USE_PLACEHOLDERS) {
+      setLoadingVideo(false);
+      return;
+    }
+    setLoadingVideo(true);
+    resolvePlaybackUrl(post)
+      .then((url) => {
+        if (active) setPlaybackUrl(url);
+      })
+      .finally(() => {
+        if (active) setLoadingVideo(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [post.id, post.raw_video_url, post.processed_video_url]);
+
+  const showVideo = playbackUrl && Platform.OS === 'web';
 
   return (
     <View style={styles.card}>
-      <View style={[styles.videoPlaceholder, { backgroundColor: PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length] }]}>
-        <Text style={styles.playIcon}>▶</Text>
-        <Text style={styles.placeholderLabel}>Placeholder video</Text>
+      <View style={[styles.videoArea, { backgroundColor: PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length] }]}>
+        {loadingVideo ? (
+          <ActivityIndicator color={Colors.red} size="large" />
+        ) : showVideo ? (
+          <WebVideo uri={playbackUrl} />
+        ) : (
+          <>
+            <Text style={styles.playIcon}>▶</Text>
+            <Text style={styles.placeholderLabel}>
+              {USE_PLACEHOLDERS ? 'Placeholder video' : 'Video preview unavailable'}
+            </Text>
+          </>
+        )}
       </View>
 
-      <View style={styles.overlay}>
+      <View style={styles.overlay} pointerEvents="box-none">
         {categoryLabel && (
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>{categoryLabel}</Text>
@@ -66,9 +122,9 @@ export { SCREEN_HEIGHT };
 
 const styles = StyleSheet.create({
   card: { height: SCREEN_HEIGHT, backgroundColor: Colors.matteBlack },
-  videoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  videoArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   playIcon: { fontSize: 48, color: Colors.textMuted },
-  placeholderLabel: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm },
+  placeholderLabel: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm, textAlign: 'center', paddingHorizontal: Spacing.lg },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
   categoryBadge: {
     position: 'absolute',
