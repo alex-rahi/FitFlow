@@ -6,6 +6,7 @@ import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { useAuth } from '../../src/context/AuthContext';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { supabase } from '../../src/lib/supabase';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -23,7 +24,12 @@ export default function SignupScreen() {
       if (USE_PLACEHOLDERS) {
         router.replace('/(tabs)/feed');
       } else {
-        router.replace('/(auth)/verify-email');
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          router.replace('/(tabs)/feed');
+        } else {
+          router.replace('/(auth)/verify-email');
+        }
       }
     } catch (err: any) {
       Alert.alert('Sign Up Failed', err.message);

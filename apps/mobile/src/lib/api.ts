@@ -37,7 +37,13 @@ class ApiClient {
     const res = await fetch(`${API_URL}/api/v1${path}`, { ...options, headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail ?? 'Request failed');
+      const detail = err.detail;
+      const message = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ')
+          : res.statusText;
+      throw new Error(message || 'Request failed');
     }
     if (res.status === 204) return undefined as T;
     return res.json();
