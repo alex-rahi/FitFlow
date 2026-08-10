@@ -6,6 +6,7 @@ import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { CategoryPicker } from '../../src/components/CategoryPicker';
 import { api } from '../../src/lib/api';
+import { uploadVideoFile } from '../../src/lib/uploadVideo';
 import { UploadCategoryId } from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
 
@@ -53,12 +54,10 @@ export default function UploadScreen() {
     try {
       const post = await api.createPost(caption || undefined, category);
       setStatus('Getting upload URL...');
-      const { upload_url } = await api.getUploadUrl(post.id);
+      const { storage_path } = await api.getUploadUrl(post.id);
 
       setStatus('Uploading video...');
-      const response = await fetch(videoUri);
-      const blob = await response.blob();
-      await fetch(upload_url, { method: 'PUT', body: blob, headers: { 'Content-Type': 'video/mp4' } });
+      await uploadVideoFile(storage_path, videoUri);
 
       setStatus('Confirming upload...');
       await api.confirmUpload(post.id);

@@ -1,9 +1,11 @@
 import uuid
+from datetime import datetime, timezone
 from uuid import UUID
 
 from app.config import settings
 from app.data.placeholders import PLACEHOLDER_AUTHORS, PLACEHOLDER_POSTS, PLACEHOLDER_USER_ID
 from app.db.pool import get_pool
+from app.integrations.storage import create_signed_upload_url
 from app.models.categories import PostCategory
 from app.models.schemas import PostCreate, PostResponse, PostStatus, UploadUrlResponse, UserProfile
 
@@ -31,6 +33,27 @@ async def _attach_author(post_dict: dict) -> PostResponse:
 
 
 async def create_post(user_id: UUID, data: PostCreate) -> PostResponse:
+    if settings.use_placeholders:
+        post_id = uuid.uuid4()
+        storage_path = f"{user_id}/{post_id}.mp4"
+        post_dict = {
+            "id": post_id,
+            "user_id": user_id,
+            "caption": data.caption,
+            "category": data.category.value,
+            "raw_video_url": storage_path,
+            "processed_video_url": None,
+            "thumbnail_url": None,
+            "duration_seconds": None,
+            "status": PostStatus.UPLOADING.value,
+            "moderation_decision": None,
+            "like_count": 0,
+            "comment_count": 0,
+            "view_count": 0,
+            "created_at": datetime.now(timezone.utc),
+        }
+        return _placeholder_post_response(post_dict)
+
     pool = await get_pool()
     post_id = uuid.uuid4()
     storage_path = f"{user_id}/{post_id}.mp4"
@@ -51,6 +74,14 @@ async def create_post(user_id: UUID, data: PostCreate) -> PostResponse:
 
 
 async def get_upload_url(user_id: UUID, post_id: UUID) -> UploadUrlResponse:
+    if settings.use_placeholders:
+        storage_path = f"{user_id}/{post_id}.mp4"
+        return UploadUrlResponse(
+            post_id=post_id,
+            upload_url=f"{settings.supabase_url}/storage/v1/object/{settings.storage_bucket_raw}/{storage_path}",
+            storage_path=storage_path,
+        )
+
     pool = await get_pool()
     row = await pool.fetchrow(
         "SELECT * FROM posts WHERE id = $1 AND user_id = $2", post_id, user_id
@@ -59,13 +90,30 @@ async def get_upload_url(user_id: UUID, post_id: UUID) -> UploadUrlResponse:
         raise ValueError("Post not found")
 
     storage_path = row["raw_video_url"]
-    upload_url = (
-        f"{settings.supabase_url}/storage/v1/object/{settings.storage_bucket_raw}/{storage_path}"
-    )
+    upload_url = create_signed_upload_url(storage_path)
     return UploadUrlResponse(post_id=post_id, upload_url=upload_url, storage_path=storage_path)
 
 
 async def confirm_upload(user_id: UUID, post_id: UUID) -> PostResponse:
+    if settings.use_placeholders:
+        post_dict = {
+            "id": post_id,
+            "user_id": user_id,
+            "caption": None,
+            "category": PostCategory.MEAL_PREP,
+            "raw_video_url": f"{user_id}/{post_id}.mp4",
+            "processed_video_url": None,
+            "thumbnail_url": None,
+            "duration_seconds": None,
+            "status": PostStatus.PROCESSING.value,
+            "moderation_decision": "pending",
+            "like_count": 0,
+            "comment_count": 0,
+            "view_count": 0,
+            "created_at": datetime.now(timezone.utc),
+        }
+        return _placeholder_post_response(post_dict)
+
     pool = await get_pool()
     row = await pool.fetchrow(
         """UPDATE posts SET status = $1
