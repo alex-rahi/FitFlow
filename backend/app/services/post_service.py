@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 from uuid import UUID
@@ -8,6 +9,8 @@ from app.db.pool import get_pool
 from app.integrations.storage import create_signed_upload_url
 from app.models.categories import PostCategory
 from app.models.schemas import PostCreate, PostResponse, PostStatus, UploadUrlResponse, UserProfile
+
+logger = logging.getLogger("gymtok.api")
 
 
 def _placeholder_post_response(post_dict: dict) -> PostResponse:
@@ -90,7 +93,14 @@ async def get_upload_url(user_id: UUID, post_id: UUID) -> UploadUrlResponse:
         raise ValueError("Post not found")
 
     storage_path = row["raw_video_url"]
-    upload_url = create_signed_upload_url(storage_path)
+    upload_url = (
+        f"{settings.supabase_url.rstrip('/')}/storage/v1/object/"
+        f"{settings.storage_bucket_raw}/{storage_path}"
+    )
+    try:
+        upload_url = create_signed_upload_url(storage_path)
+    except Exception as exc:
+        logger.warning("Signed upload URL unavailable, returning storage path only: %s", exc)
     return UploadUrlResponse(post_id=post_id, upload_url=upload_url, storage_path=storage_path)
 
 
