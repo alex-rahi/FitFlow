@@ -1,3 +1,5 @@
+Project is live at https://gym-tok-demo-v3.vercel.app
+
 # GymTok
 
 **Cross-platform social fitness platform with AI-assisted content moderation**
