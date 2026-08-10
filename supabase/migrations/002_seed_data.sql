@@ -1,5 +1,5 @@
-# GymTok Seed Data — run after 001_initial_schema.sql
-# Creates placeholder users and published posts for local development
+-- GymTok Seed Data — run after 001_initial_schema.sql
+-- Creates placeholder users and published posts for local development
 
 -- Placeholder profiles (IDs match mobile/backend placeholder constants)
 INSERT INTO profiles (id, username, display_name, bio, trust_level, follower_count, following_count, post_count)
