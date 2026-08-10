@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.auth.jwt import get_current_user_id, get_optional_user_id
+from app.models.categories import CATEGORY_LABELS, PostCategory
 from app.models.schemas import FeedResponse, PostCreate, PostResponse, UploadUrlResponse
 from app.services import post_service
 
@@ -14,13 +15,22 @@ async def create_post(data: PostCreate, user_id: UUID = Depends(get_current_user
     return await post_service.create_post(user_id, data)
 
 
+@router.get("/categories")
+async def list_categories():
+    return [
+        {"id": cat.value, "label": CATEGORY_LABELS[cat]}
+        for cat in PostCategory
+    ]
+
+
 @router.get("/feed", response_model=FeedResponse)
 async def get_feed(
     limit: int = 20,
     cursor: str | None = None,
+    category: PostCategory | None = None,
     user_id: UUID | None = Depends(get_optional_user_id),
 ):
-    posts = await post_service.get_feed(user_id, limit, cursor)
+    posts = await post_service.get_feed(user_id, limit, cursor, category)
     next_cursor = posts[-1].created_at.isoformat() if len(posts) == limit else None
     return FeedResponse(posts=posts, next_cursor=next_cursor)
 

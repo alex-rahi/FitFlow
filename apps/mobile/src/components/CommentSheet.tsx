@@ -6,21 +6,36 @@ import {
 import { Input } from './Input';
 import { Button } from './Button';
 import { api } from '../lib/api';
+import { ThreadComment } from '../constants/threadComments';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
 interface CommentSheetProps {
   visible: boolean;
   postId: string;
+  parentId?: string | null;
+  replyToUsername?: string;
   onClose: () => void;
+  onCommentAdded?: () => void;
 }
 
-const PLACEHOLDER_COMMENTS = [
-  { id: '1', content: 'Great form! 💪', author: { username: 'fitness_jade' }, created_at: '2025-07-30T12:00:00Z' },
-  { id: '2', content: 'What weight is that?', author: { username: 'bench_king' }, created_at: '2025-07-30T11:30:00Z' },
-];
+function CommentRow({ item, depth = 0 }: { item: ThreadComment; depth?: number }) {
+  return (
+    <View style={[styles.comment, depth > 0 && { marginLeft: depth * 16 }]}>
+      <Text style={styles.commentUser}>@{item.author?.username ?? 'user'}</Text>
+      <Text style={styles.commentText}>{item.content}</Text>
+    </View>
+  );
+}
 
-export function CommentSheet({ visible, postId, onClose }: CommentSheetProps) {
-  const [comments, setComments] = useState<any[]>([]);
+export function CommentSheet({
+  visible,
+  postId,
+  parentId,
+  replyToUsername,
+  onClose,
+  onCommentAdded,
+}: CommentSheetProps) {
+  const [comments, setComments] = useState<ThreadComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +45,7 @@ export function CommentSheet({ visible, postId, onClose }: CommentSheetProps) {
     setLoading(true);
     api.getComments(postId)
       .then(setComments)
-      .catch(() => setComments(PLACEHOLDER_COMMENTS))
+      .catch(() => setComments([]))
       .finally(() => setLoading(false));
   }, [visible, postId]);
 
@@ -38,21 +53,29 @@ export function CommentSheet({ visible, postId, onClose }: CommentSheetProps) {
     if (!newComment.trim()) return;
     setSubmitting(true);
     try {
-      const comment = await api.addComment(postId, newComment.trim());
-      setComments(prev => [comment, ...prev]);
+      const comment = await api.addComment(postId, newComment.trim(), parentId);
+      setComments((prev) => [...prev, comment]);
       setNewComment('');
+      onCommentAdded?.();
     } catch {
-      setComments(prev => [{
+      const fallback: ThreadComment = {
         id: Date.now().toString(),
+        post_id: postId,
+        parent_id: parentId ?? null,
         content: newComment.trim(),
-        author: { username: 'you' },
+        like_count: 0,
         created_at: new Date().toISOString(),
-      }, ...prev]);
+        author: { username: 'you' },
+      };
+      setComments((prev) => [...prev, fallback]);
       setNewComment('');
+      onCommentAdded?.();
     } finally {
       setSubmitting(false);
     }
   };
+
+  const title = parentId && replyToUsername ? `Reply to @${replyToUsername}` : 'Thread replies';
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -63,7 +86,7 @@ export function CommentSheet({ visible, postId, onClose }: CommentSheetProps) {
         >
           <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>Comments</Text>
+            <Text style={styles.title}>{title}</Text>
             <TouchableOpacity onPress={onClose}>
               <Text style={styles.closeBtn}>✕</Text>
             </TouchableOpacity>
@@ -77,18 +100,15 @@ export function CommentSheet({ visible, postId, onClose }: CommentSheetProps) {
               keyExtractor={(item) => item.id}
               style={styles.list}
               renderItem={({ item }) => (
-                <View style={styles.comment}>
-                  <Text style={styles.commentUser}>@{item.author?.username ?? 'user'}</Text>
-                  <Text style={styles.commentText}>{item.content}</Text>
-                </View>
+                <CommentRow item={item} depth={item.parent_id ? 1 : 0} />
               )}
-              ListEmptyComponent={<Text style={styles.empty}>No comments yet</Text>}
+              ListEmptyComponent={<Text style={styles.empty}>No replies yet — start the conversation</Text>}
             />
           )}
 
           <View style={styles.inputRow}>
             <Input
-              placeholder="Add a comment..."
+              placeholder={parentId ? 'Write a reply...' : 'Join the thread...'}
               value={newComment}
               onChangeText={setNewComment}
               style={{ flex: 1 }}

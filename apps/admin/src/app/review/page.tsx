@@ -93,9 +93,16 @@ export default function ReviewPage() {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-white font-medium text-sm">
-                      @{item.post?.author?.username ?? 'unknown'}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-medium text-sm">
+                        @{item.post?.author?.username ?? 'unknown'}
+                      </p>
+                      {item.post?.category && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600/20 text-red-400 font-medium">
+                          {item.post.category.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-zinc-500 text-xs mt-1 line-clamp-2">
                       {item.post?.caption ?? 'No caption'}
                     </p>

@@ -1,0 +1,67 @@
+import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { FEED_CATEGORIES, FeedCategoryId } from '../constants/categories';
+import { Colors, Radius, Spacing } from '../constants/theme';
+
+interface Props {
+  selected: FeedCategoryId;
+  onSelect: (id: FeedCategoryId) => void;
+}
+
+export function CategoryTabs({ selected, onSelect }: Props) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.row}
+      style={styles.container}
+    >
+      {FEED_CATEGORIES.map((cat) => {
+        const active = selected === cat.id;
+        return (
+          <TouchableOpacity
+            key={cat.id}
+            style={[styles.chip, active && styles.chipActive]}
+            onPress={() => onSelect(cat.id)}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.label, active && styles.labelActive]}>{cat.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  row: {
+    paddingHorizontal: Spacing.md,
+    gap: Spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+    backgroundColor: 'rgba(20, 20, 20, 0.85)',
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  chipActive: {
+    backgroundColor: Colors.red,
+    borderColor: Colors.red,
+  },
+  label: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  labelActive: {
+    color: Colors.textPrimary,
+  },
+});

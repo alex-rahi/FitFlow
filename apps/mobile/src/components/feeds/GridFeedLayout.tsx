@@ -1,0 +1,78 @@
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import { VideoPost } from '../VideoCard';
+import { Colors, Radius, Spacing } from '../../constants/theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = Spacing.sm;
+const CARD_WIDTH = (SCREEN_WIDTH - Spacing.md * 2 - CARD_GAP) / 2;
+
+const GRADIENTS = ['#1a3a2e', '#2e1a3a', '#1a2e3a', '#3a2e1a', '#2a1a1a'];
+
+interface Props {
+  posts: VideoPost[];
+  onLike: (postId: string) => void;
+  onOpen: (post: VideoPost, index: number) => void;
+}
+
+function formatCount(n: number) {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
+export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
+  return (
+    <FlatList
+      data={posts}
+      keyExtractor={(item) => item.id}
+      numColumns={2}
+      contentContainerStyle={styles.list}
+      columnWrapperStyle={styles.row}
+      showsVerticalScrollIndicator={false}
+      renderItem={({ item, index }) => (
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.85}
+          onPress={() => onOpen(item, index)}
+        >
+          <View style={[styles.thumb, { backgroundColor: GRADIENTS[index % GRADIENTS.length] }]}>
+            <Text style={styles.playIcon}>▶</Text>
+          </View>
+          <View style={styles.meta}>
+            <Text style={styles.caption} numberOfLines={2}>{item.caption ?? 'Untitled'}</Text>
+            <View style={styles.footer}>
+              <Text style={styles.author}>@{item.author?.username ?? 'user'}</Text>
+              <TouchableOpacity onPress={() => onLike(item.id)} hitSlop={8}>
+                <Text style={styles.likes}>♥ {formatCount(item.like_count)}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  list: { paddingHorizontal: Spacing.md, paddingTop: 100, paddingBottom: 120 },
+  row: { gap: CARD_GAP, marginBottom: CARD_GAP },
+  card: {
+    width: CARD_WIDTH,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  thumb: {
+    width: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playIcon: { fontSize: 28, color: Colors.textMuted },
+  meta: { padding: Spacing.sm },
+  caption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.xs },
+  author: { color: Colors.textMuted, fontSize: 11, flex: 1 },
+  likes: { color: Colors.red, fontSize: 11, fontWeight: '600' },
+});

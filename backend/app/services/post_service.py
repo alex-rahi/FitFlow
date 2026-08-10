@@ -4,6 +4,7 @@ from uuid import UUID
 from app.config import settings
 from app.data.placeholders import PLACEHOLDER_AUTHORS, PLACEHOLDER_POSTS, PLACEHOLDER_USER_ID
 from app.db.pool import get_pool
+from app.models.categories import PostCategory
 from app.models.schemas import PostCreate, PostResponse, PostStatus, UploadUrlResponse, UserProfile
 
 
@@ -35,9 +36,9 @@ async def create_post(user_id: UUID, data: PostCreate) -> PostResponse:
     storage_path = f"{user_id}/{post_id}.mp4"
 
     row = await pool.fetchrow(
-        """INSERT INTO posts (id, user_id, caption, raw_video_url, status)
-           VALUES ($1, $2, $3, $4, $5) RETURNING *""",
-        post_id, user_id, data.caption, storage_path, PostStatus.UPLOADING.value,
+        """INSERT INTO posts (id, user_id, caption, category, raw_video_url, status)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *""",
+        post_id, user_id, data.caption, data.category.value, storage_path, PostStatus.UPLOADING.value,
     )
 
     await pool.execute(
@@ -106,29 +107,59 @@ async def get_user_posts(user_id: UUID, limit: int = 20, cursor: str | None = No
     return [await _attach_author(dict(r)) for r in rows]
 
 
-async def get_feed(user_id: UUID | None, limit: int = 20, cursor: str | None = None) -> list[PostResponse]:
+async def get_feed(
+    user_id: UUID | None,
+    limit: int = 20,
+    cursor: str | None = None,
+    category: PostCategory | None = None,
+) -> list[PostResponse]:
     if settings.use_placeholders:
-        posts = PLACEHOLDER_POSTS[:limit]
-        return [_placeholder_post_response(dict(p)) for p in posts]
+        posts = PLACEHOLDER_POSTS
+        if category and category != PostCategory.MAIN_FEED:
+            posts = [p for p in posts if p.get("category") == category.value]
+        return [_placeholder_post_response(dict(p)) for p in posts[:limit]]
 
     pool = await get_pool()
+    category_clause = ""
+    category_param: list = []
+    if category and category != PostCategory.MAIN_FEED:
+        category_clause = " AND p.category = $CATEGORY$"
+        category_param = [category.value]
+
     if user_id:
-        query = """
+        query = f"""
             SELECT p.* FROM posts p
             WHERE p.status = 'published'
               AND (p.user_id IN (SELECT following_id FROM follows WHERE follower_id = $1)
                    OR p.user_id = $1)
+              {category_clause.replace('$CATEGORY$', '$2' if category_param else '')}
         """
-        params: list = [user_id]
+        params: list = [user_id, *category_param]
+        cursor_idx = len(params) + 1
+        limit_idx = cursor_idx + 1
         if cursor:
-            query += " AND p.created_at < $2 ORDER BY p.created_at DESC LIMIT $3"
+            query += f" AND p.created_at < ${cursor_idx} ORDER BY p.created_at DESC LIMIT ${limit_idx}"
             params.extend([cursor, limit])
         else:
-            query += " ORDER BY p.created_at DESC LIMIT $2"
+            query += f" ORDER BY p.created_at DESC LIMIT ${cursor_idx}"
             params.append(limit)
         rows = await pool.fetch(query, *params)
     else:
-        if cursor:
+        if category and category != PostCategory.MAIN_FEED:
+            if cursor:
+                rows = await pool.fetch(
+                    """SELECT * FROM posts WHERE status = 'published'
+                       AND category = $1 AND created_at < $2
+                       ORDER BY created_at DESC LIMIT $3""",
+                    category.value, cursor, limit,
+                )
+            else:
+                rows = await pool.fetch(
+                    """SELECT * FROM posts WHERE status = 'published' AND category = $1
+                       ORDER BY created_at DESC LIMIT $2""",
+                    category.value, limit,
+                )
+        elif cursor:
             rows = await pool.fetch(
                 """SELECT * FROM posts WHERE status = 'published' AND created_at < $1
                    ORDER BY created_at DESC LIMIT $2""",

@@ -1,3 +1,9 @@
+import { FeedCategoryId } from '../constants/categories';
+import {
+  PLACEHOLDER_THREAD_COMMENTS,
+  ThreadComment,
+  getCommentsForPost,
+} from '../constants/threadComments';
 import {
   PLACEHOLDER_POSTS,
   PLACEHOLDER_PROFILE,
@@ -73,28 +79,35 @@ class ApiClient {
 
   getProfileById = (id: string) => this.request<any>(`/profiles/${id}`);
 
-  getFeed = async (cursor?: string) => {
+  getFeed = async (cursor?: string, category: FeedCategoryId = 'main_feed') => {
+    const categoryParam = category !== 'main_feed' ? `&category=${category}` : '';
+    const cursorParam = cursor ? `cursor=${cursor}` : '';
+    const query = [cursorParam, categoryParam.replace(/^&/, '')].filter(Boolean).join('&');
     try {
-      return await this.request<any>(`/posts/feed${cursor ? `?cursor=${cursor}` : ''}`);
+      return await this.request<any>(`/posts/feed${query ? `?${query}` : ''}`);
     } catch {
       if (USE_PLACEHOLDERS) {
         await delay(400);
-        return { posts: PLACEHOLDER_POSTS, next_cursor: null };
+        const posts = category === 'main_feed'
+          ? PLACEHOLDER_POSTS
+          : PLACEHOLDER_POSTS.filter((p) => p.category === category);
+        return { posts, next_cursor: null };
       }
       return { posts: [], next_cursor: null };
     }
   };
 
-  createPost = async (caption?: string) => {
+  createPost = async (caption?: string, category: string = 'meal_prep') => {
     if (USE_PLACEHOLDERS) {
       await delay(500);
       return {
         id: `post-${Date.now()}`,
         caption,
+        category,
         status: 'processing',
       };
     }
-    return this.request<any>('/posts', { method: 'POST', body: JSON.stringify({ caption }) });
+    return this.request<any>('/posts', { method: 'POST', body: JSON.stringify({ caption, category }) });
   };
 
   getPost = (id: string) => this.request<any>(`/posts/${id}`);
@@ -129,23 +142,33 @@ class ApiClient {
   };
 
   unlikePost = (postId: string) => this.request<void>(`/posts/${postId}/like`, { method: 'DELETE' });
-  getComments = async (postId: string) => {
+  getComments = async (postId: string): Promise<ThreadComment[]> => {
     if (USE_PLACEHOLDERS) {
       await delay(200);
-      return [
-        { id: '1', content: 'Great form! 💪', author: { username: 'fitness_jade' }, created_at: '2025-07-30T12:00:00Z' },
-        { id: '2', content: 'What weight is that?', author: { username: 'bench_king' }, created_at: '2025-07-30T11:30:00Z' },
-      ];
+      return getCommentsForPost(postId);
     }
-    return this.request<any[]>(`/posts/${postId}/comments`);
+    return this.request<ThreadComment[]>(`/posts/${postId}/comments`);
   };
 
-  addComment = async (postId: string, content: string) => {
+  addComment = async (postId: string, content: string, parentId?: string | null): Promise<ThreadComment> => {
     if (USE_PLACEHOLDERS) {
       await delay(200);
-      return { id: Date.now().toString(), content, author: { username: 'you' }, created_at: new Date().toISOString() };
+      const comment: ThreadComment = {
+        id: `comment-${Date.now()}`,
+        post_id: postId,
+        parent_id: parentId ?? null,
+        content,
+        like_count: 0,
+        created_at: new Date().toISOString(),
+        author: { username: 'you', display_name: 'You' },
+      };
+      PLACEHOLDER_THREAD_COMMENTS.push(comment);
+      return comment;
     }
-    return this.request<any>(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+    return this.request<ThreadComment>(`/posts/${postId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content, parent_id: parentId ?? null }),
+    });
   };
 
   getNotifications = async () => {

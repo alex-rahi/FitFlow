@@ -4,11 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
+import { CategoryPicker } from '../../src/components/CategoryPicker';
 import { api } from '../../src/lib/api';
+import { UploadCategoryId } from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
 
 export default function UploadScreen() {
   const [caption, setCaption] = useState('');
+  const [category, setCategory] = useState<UploadCategoryId>('meal_prep');
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
@@ -48,7 +51,7 @@ export default function UploadScreen() {
     setUploading(true);
     setStatus('Creating post...');
     try {
-      const post = await api.createPost(caption || undefined);
+      const post = await api.createPost(caption || undefined, category);
       setStatus('Getting upload URL...');
       const { upload_url } = await api.getUploadUrl(post.id);
 
@@ -93,6 +96,8 @@ export default function UploadScreen() {
         onChangeText={setCaption}
         multiline
       />
+
+      <CategoryPicker selected={category} onSelect={setCategory} />
 
       <View style={styles.actions}>
         <Button title="Choose from Library" onPress={pickVideo} variant="secondary" disabled={uploading} />

@@ -28,7 +28,10 @@ async def get_comments(post_id: UUID, limit: int = 50):
 async def add_comment(
     post_id: UUID, data: CommentCreate, user_id: UUID = Depends(get_current_user_id)
 ):
-    return await social_service.add_comment(user_id, post_id, data)
+    try:
+        return await social_service.add_comment(user_id, post_id, data)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
 
 
 @router.post("/users/{target_id}/follow", status_code=204)

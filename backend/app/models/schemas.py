@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.categories import PostCategory
+
 
 class PostStatus(str, Enum):
     UPLOADING = "uploading"
@@ -50,11 +52,13 @@ class ProfileUpdate(BaseModel):
 
 class PostCreate(BaseModel):
     caption: str | None = None
+    category: PostCategory = PostCategory.MEAL_PREP
 
 
 class PostResponse(BaseModel):
     id: UUID
     user_id: UUID
+    category: PostCategory = PostCategory.MEAL_PREP
     caption: str | None = None
     raw_video_url: str | None = None
     processed_video_url: str | None = None
@@ -79,13 +83,16 @@ class UploadUrlResponse(BaseModel):
 
 class CommentCreate(BaseModel):
     content: str = Field(..., min_length=1, max_length=1000)
+    parent_id: UUID | None = None
 
 
 class CommentResponse(BaseModel):
     id: UUID
     user_id: UUID
     post_id: UUID
+    parent_id: UUID | None = None
     content: str
+    like_count: int = 0
     created_at: datetime
     author: UserProfile | None = None
 

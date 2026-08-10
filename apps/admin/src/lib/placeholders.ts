@@ -17,6 +17,7 @@ export const PLACEHOLDER_REVIEW_QUEUE = [
     review_status: 'pending',
     post: {
       id: '10000000-0000-4000-8000-000000000004',
+      category: 'prs',
       caption: 'New PR attempt — needs manual review',
       thumbnail_url: null,
       status: 'pending_review',
@@ -41,6 +42,7 @@ export const PLACEHOLDER_REVIEW_QUEUE = [
     review_status: 'pending',
     post: {
       id: '10000000-0000-4000-8000-000000000005',
+      category: 'advice',
       caption: 'No gym equipment detected — flagged by AI',
       thumbnail_url: null,
       status: 'flagged',
