@@ -107,6 +107,10 @@ class ApiClient {
         status: 'processing',
       };
     }
+    const token = await this.getToken();
+    if (!token) {
+      throw new Error('You must be signed in to upload');
+    }
     return this.request<any>('/posts', { method: 'POST', body: JSON.stringify({ caption, category }) });
   };
 
