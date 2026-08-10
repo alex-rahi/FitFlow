@@ -9,4 +9,3 @@ Nutrition — Full-width column cards with macro breakdown (protein, carbs, fat,
 Advice — Community thread layout: post as OP, nested replies, inline discussion, and “watch attached clip” for coaching/form-check videos
 Built upload flow with per-category tagging and Next.js admin moderation queue for manual video approval
 Roadmap: refactor to AWS (Cognito, RDS, S3, ECS/EKS) as user scale and cost justify migration off free-tier managed services
-Project is live at https://gym-tok-demo-v3.vercel.app
