@@ -19,7 +19,7 @@ export default function VerifyEmailScreen() {
           <Text style={styles.hint}>Demo mode — email verification is simulated</Text>
         )}
         <View style={styles.actions}>
-          <Button title="Continue to App" onPress={() => router.replace('/(tabs)/feed')} />
+          <Button title="Go to Log In" onPress={() => router.replace('/(auth)/login')} />
           <View style={{ height: Spacing.sm }} />
           <Button title="Resend Email" onPress={() => {}} variant="secondary" />
         </View>
