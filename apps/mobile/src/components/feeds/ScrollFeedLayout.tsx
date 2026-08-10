@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
-import { VideoCard, VideoPost } from './VideoCard';
-import { Colors, Spacing } from '../constants/theme';
+import { VideoCard, VideoPost } from '../VideoCard';
+import { Colors, Spacing } from '../../constants/theme';
 
 interface Props {
   posts: VideoPost[];
