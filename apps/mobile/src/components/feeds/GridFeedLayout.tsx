@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { VideoPost } from '../VideoCard';
 import { AdPlaceholder } from '../AdPlaceholder';
 import { PLACEHOLDER_ADS } from '../../constants/ads';
@@ -40,14 +40,14 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
           ad={headerAd}
           variant="banner"
           onPress={() => {
-            analytics.track('ad_click', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'photos_grid' });
+            analytics.track('ad_click', { ad_id: headerAd.id, brand: headerAd.brand,             placement: 'form_grid' });
           }}
         />
       }
       onLayout={() => {
         if (adSeen.current) return;
         adSeen.current = true;
-        analytics.track('ad_impression', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'photos_grid' });
+        analytics.track('ad_impression', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'form_grid' });
       }}
       renderItem={({ item, index }) => (
         <TouchableOpacity
@@ -56,14 +56,12 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
           onPress={() => onOpen(item, index)}
         >
           <View style={[styles.thumb, { backgroundColor: GRADIENTS[index % GRADIENTS.length] }]}>
-            {item.media_type === 'photo' && item.photo_uri ? (
-              <Image source={{ uri: item.photo_uri }} style={styles.photo} resizeMode="cover" />
-            ) : (
-              <Text style={styles.photoIcon}>📷</Text>
-            )}
+            <Text style={styles.formIcon}>📋</Text>
           </View>
           <View style={styles.meta}>
-            <Text style={styles.caption} numberOfLines={2}>{item.caption ?? 'Untitled'}</Text>
+            <Text style={styles.caption} numberOfLines={2}>
+              {item.workout_form?.title ?? item.caption ?? 'Workout log'}
+            </Text>
             <View style={styles.footer}>
               <Text style={styles.author}>@{item.author?.username ?? 'user'}</Text>
               <TouchableOpacity onPress={() => onLike(item.id)} hitSlop={8}>
@@ -95,8 +93,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  photo: { width: '100%', height: '100%' },
-  photoIcon: { fontSize: 32 },
+  formIcon: { fontSize: 32 },
   meta: { padding: Spacing.sm },
   caption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.xs },
