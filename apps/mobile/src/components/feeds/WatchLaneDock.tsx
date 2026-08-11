@@ -5,6 +5,7 @@ import { FeedTheme, getLaneTheme } from '../../lib/feedTheme';
 const LANE_ICONS: Record<FeedLaneId, string> = {
   main_feed: '✦',
   workouts: '🏋',
+  equipment: '🛠',
   nutrition: '🥗',
   prs: '🏆',
   photos: '📷',

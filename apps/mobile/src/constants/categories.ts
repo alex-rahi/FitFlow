@@ -1,4 +1,4 @@
-export type PostCategoryId = 'workouts' | 'nutrition' | 'prs' | 'advice';
+export type PostCategoryId = 'workouts' | 'equipment' | 'nutrition' | 'prs' | 'advice';
 
 export type MediaType = 'video' | 'photo' | 'text';
 
@@ -31,13 +31,21 @@ export const TAB_VIEWS: FeedView[] = [
 export const FEED_LANES: { id: FeedLaneId; label: string }[] = [
   { id: 'main_feed', label: 'For You' },
   { id: 'workouts', label: 'Workouts' },
+  { id: 'equipment', label: 'Equipment' },
   { id: 'nutrition', label: 'Nutrition' },
   { id: 'prs', label: 'PRs' },
   { id: 'photos', label: 'Photos' },
   { id: 'community', label: 'Talk' },
 ];
 
-export const PHOTO_CATEGORIES: PostCategoryId[] = ['workouts', 'nutrition', 'prs'];
+export const PHOTO_CATEGORIES: PostCategoryId[] = ['workouts', 'equipment', 'nutrition', 'prs'];
+
+export function isEquipmentPost(post: {
+  category?: string | null;
+  topics?: string[] | null;
+}): boolean {
+  return post.category === 'equipment' || (post.topics?.includes('equipment') ?? false);
+}
 
 export function isPhotoCategory(category?: string | null): boolean {
   return PHOTO_CATEGORIES.includes(category as PostCategoryId);
@@ -93,12 +101,16 @@ export function filterPostsForLane<T extends { category?: string | null; media_t
     (post) => (isVideoPost(post) || isPhotoPost(post)) && post.category !== 'advice',
   );
   if (laneId === 'main_feed') return scrollMedia;
+  if (laneId === 'equipment') {
+    return scrollMedia.filter((post) => isEquipmentPost(post));
+  }
   return scrollMedia.filter((post) => post.category === laneId);
 }
 
 export function getCategoryLabel(category?: string | null): string {
   switch (category) {
     case 'workouts': return 'Workout';
+    case 'equipment': return 'Equipment';
     case 'nutrition': return 'Nutrition';
     case 'prs': return 'PR';
     case 'advice': return 'Community';

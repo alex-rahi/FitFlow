@@ -26,7 +26,7 @@ import { analytics } from '../../src/lib/analytics';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
-const UPLOAD_CATEGORIES: PostCategoryId[] = ['workouts', 'nutrition', 'prs', 'advice'];
+const UPLOAD_CATEGORIES: PostCategoryId[] = ['workouts', 'equipment', 'nutrition', 'prs', 'advice'];
 const MEDIA_TYPES: { id: MediaType; label: string }[] = [
   { id: 'video', label: 'Video' },
   { id: 'photo', label: 'Photo' },
