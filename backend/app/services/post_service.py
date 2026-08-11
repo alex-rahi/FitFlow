@@ -117,7 +117,7 @@ async def confirm_upload(user_id: UUID, post_id: UUID) -> PostResponse:
             "thumbnail_url": None,
             "duration_seconds": None,
             "status": PostStatus.PROCESSING.value,
-            "moderation_decision": "pending",
+            "moderation_decision": None,
             "like_count": 0,
             "comment_count": 0,
             "view_count": 0,

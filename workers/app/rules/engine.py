@@ -52,8 +52,8 @@ def rule_content_moderation(ctx: EvaluationContext, threshold: float = 0.7) -> R
                     {"category": score["category"], "score": score["score"]},
                 )
             return RuleResult(
-                "content_moderation", Outcome.FLAG_FOR_REVIEW, score["score"],
-                {"category": score["category"], "score": score["score"]},
+                "content_moderation", Outcome.APPROVE, score["score"],
+                {"category": score["category"], "score": score["score"], "note": "Below reject threshold — auto-publish"},
             )
     return RuleResult("content_moderation", Outcome.APPROVE, 1.0)
 
@@ -65,7 +65,7 @@ def rule_exercise_detection(ctx: EvaluationContext) -> RuleResult:
 
     if not gym_detected:
         return RuleResult(
-            "exercise_detection", Outcome.FLAG_FOR_REVIEW, 0.5,
+            "exercise_detection", Outcome.APPROVE, 0.5,
             {"reason": "No gym-related objects detected", "detected": list(detected_labels)},
         )
     return RuleResult(
@@ -79,22 +79,22 @@ def rule_safety_detection(ctx: EvaluationContext) -> RuleResult:
     unsafe = [d for d in ctx.detections if d.get("detection_type") == "safety" and d["confidence"] > 0.6]
     if unsafe:
         return RuleResult(
-            "safety_detection", Outcome.FLAG_FOR_REVIEW, max(u["confidence"] for u in unsafe),
-            {"unsafe_detections": len(unsafe)},
+            "safety_detection", Outcome.APPROVE, max(u["confidence"] for u in unsafe),
+            {"unsafe_detections": len(unsafe), "note": "Flagged but auto-published"},
         )
     return RuleResult("safety_detection", Outcome.APPROVE, 0.95)
 
 
 def rule_user_trust(ctx: EvaluationContext) -> RuleResult:
-    """Low-trust or new accounts get manual review."""
+    """Trust signals inform logging only — uploads auto-publish after YOLO checks."""
     if ctx.prior_violations >= 3:
         return RuleResult(
-            "user_trust", Outcome.MANUAL_REVIEW, 0.8,
+            "user_trust", Outcome.APPROVE, 0.8,
             {"reason": "Multiple prior violations", "count": ctx.prior_violations},
         )
     if ctx.user_trust_level < 20 and ctx.account_age_days < 7:
         return RuleResult(
-            "user_trust", Outcome.MANUAL_REVIEW, 0.6,
+            "user_trust", Outcome.APPROVE, 0.6,
             {"reason": "New account with low trust"},
         )
     return RuleResult("user_trust", Outcome.APPROVE, 0.9)
@@ -133,7 +133,7 @@ def evaluate_all_rules(ctx: EvaluationContext, threshold: float = 0.7) -> tuple[
 
     best = max(rules, key=lambda r: OUTCOME_PRIORITY[r.outcome])
 
-    if best.outcome == Outcome.APPROVE:
+    if best.outcome in (Outcome.APPROVE, Outcome.FLAG_FOR_REVIEW, Outcome.MANUAL_REVIEW):
         final = Outcome.PUBLISH
     else:
         final = best.outcome

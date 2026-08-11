@@ -66,8 +66,8 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
 
       <Text style={styles.helper}>
         {activeOption.mediaType === 'photo'
-          ? 'Recipe photos appear in the Recipes grid tab once approved.'
-          : `${activeOption.label} posts appear in ${selectedDestination === 'feed' ? 'Feed' : 'Community'} once approved.`}
+          ? 'Recipe photos are YOLO-scanned and auto-published to the Recipes grid.'
+          : `${activeOption.label} posts are YOLO-moderated and auto-published to ${selectedDestination === 'feed' ? 'Feed' : 'Community'}.`}
       </Text>
     </View>
   );
