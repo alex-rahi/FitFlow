@@ -234,8 +234,9 @@ class ApiClient {
   /** Runs YOLO moderation and auto-publishes on pass — no manual review queue. */
   runYoloModeration = async (postId: string) => {
     if (USE_PLACEHOLDERS) {
-      await delay(1200);
       const post = uploadedPosts.find((p) => p.id === postId);
+      const isText = post?.media_type === 'text';
+      await delay(isText ? 600 : 1200);
       if (post) {
         post.status = 'published';
         post.moderation_decision = 'publish';

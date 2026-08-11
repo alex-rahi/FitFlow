@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { CommentSheet } from '../../src/components/CommentSheet';
 import { ScrollFeedLayout } from '../../src/components/feeds/ScrollFeedLayout';
 import { VideoPost } from '../../src/components/VideoCard';
@@ -30,9 +31,11 @@ export default function FeedScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadFeed();
-  }, [loadFeed]);
+  useFocusEffect(
+    useCallback(() => {
+      loadFeed();
+    }, [loadFeed]),
+  );
 
   const handleLike = async (postId: string) => {
     try {

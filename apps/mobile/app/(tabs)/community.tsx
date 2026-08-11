@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { CommentSheet } from '../../src/components/CommentSheet';
 import { PostDetailOverlay } from '../../src/components/PostDetailOverlay';
 import { ThreadFeedLayout } from '../../src/components/feeds/ThreadFeedLayout';
@@ -36,9 +37,11 @@ export default function CommunityScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadCommunity();
-  }, [loadCommunity]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCommunity();
+    }, [loadCommunity]),
+  );
 
   const handleLike = async (postId: string) => {
     try {

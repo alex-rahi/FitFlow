@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { PostDetailOverlay } from '../../src/components/PostDetailOverlay';
 import { GridFeedLayout } from '../../src/components/feeds/GridFeedLayout';
 import { VideoPost } from '../../src/components/VideoCard';
@@ -27,9 +28,11 @@ export default function RecipesScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadRecipes();
-  }, [loadRecipes]);
+  useFocusEffect(
+    useCallback(() => {
+      loadRecipes();
+    }, [loadRecipes]),
+  );
 
   const handleLike = async (postId: string) => {
     try {
