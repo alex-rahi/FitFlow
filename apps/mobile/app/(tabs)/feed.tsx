@@ -1,31 +1,36 @@
-import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCallback, useMemo, useState } from 'react';
+import { View, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { CommentSheet } from '../../src/components/CommentSheet';
-import { DirectionalFeedLayout } from '../../src/components/feeds/DirectionalFeedLayout';
+import { FourWayFeed } from '../../src/components/feeds/FourWayFeed';
 import { VideoPost } from '../../src/components/VideoCard';
 import { api } from '../../src/lib/api';
-import { Colors, Spacing, isDemoMode } from '../../src/constants/theme';
+import { Colors } from '../../src/constants/theme';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 import { analytics } from '../../src/lib/analytics';
 
+const TAB_BAR_HEIGHT = 56;
+
 export default function FeedScreen() {
   useScreenAnalytics('feed');
+  const { height: windowHeight } = useWindowDimensions();
   const [posts, setPosts] = useState<VideoPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cursor, setCursor] = useState<string | undefined>();
   const [commentTarget, setCommentTarget] = useState<{ postId: string } | null>(null);
-  const [feedHeight, setFeedHeight] = useState(0);
 
-  const loadFeed = useCallback(async (nextCursor?: string) => {
-    if (!nextCursor) setLoading(true);
+  const feedHeight = useMemo(() => windowHeight - TAB_BAR_HEIGHT, [windowHeight]);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await api.getFeedView('feed', nextCursor);
-      setPosts((prev) => (nextCursor ? [...prev, ...data.posts] : data.posts));
-      setCursor(data.next_cursor ?? undefined);
+      const [feed, photos, community] = await Promise.all([
+        api.getFeedView('feed'),
+        api.getFeedView('photos'),
+        api.getFeedView('community'),
+      ]);
+      setPosts([...feed.posts, ...photos.posts, ...community.posts]);
     } catch {
-      // API may not be running yet
+      // ignore
     } finally {
       setLoading(false);
     }
@@ -33,8 +38,8 @@ export default function FeedScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadFeed();
-    }, [loadFeed]),
+      loadAll();
+    }, [loadAll]),
   );
 
   const handleLike = async (postId: string) => {
@@ -55,65 +60,31 @@ export default function FeedScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Feed</Text>
-        {posts.length > 0 && (
-          <Text style={styles.rankHint}>Ranked by likes, comments, and views</Text>
-        )}
-      </View>
-      {isDemoMode() && (
-        <View style={styles.demoBanner}>
-          <Text style={styles.demoBannerText}>Demo mode — using placeholder data</Text>
+    <View style={styles.container}>
+      {loading && posts.length === 0 ? (
+        <View style={[styles.center, { height: feedHeight }]}>
+          <ActivityIndicator color={Colors.red} />
         </View>
+      ) : (
+        <FourWayFeed
+          posts={posts}
+          loading={loading}
+          height={feedHeight}
+          onLike={handleLike}
+          onComment={(postId) => setCommentTarget({ postId })}
+        />
       )}
-      <View
-        style={styles.feedArea}
-        onLayout={(event) => {
-          const nextHeight = Math.floor(event.nativeEvent.layout.height);
-          if (nextHeight > 0 && nextHeight !== feedHeight) setFeedHeight(nextHeight);
-        }}
-      >
-        {feedHeight === 0 || (loading && posts.length === 0) ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={Colors.red} size="large" />
-          </View>
-        ) : (
-          <DirectionalFeedLayout
-            posts={posts}
-            loading={loading}
-            hasMore={!!cursor}
-            itemHeight={feedHeight}
-            onLoadMore={() => cursor && loadFeed(cursor)}
-            onLike={handleLike}
-            onComment={(postId) => setCommentTarget({ postId })}
-          />
-        )}
-      </View>
       <CommentSheet
         visible={!!commentTarget}
         postId={commentTarget?.postId ?? ''}
         onClose={() => setCommentTarget(null)}
         onCommentAdded={handleCommentAdded}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.matteBlack },
-  header: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm, paddingBottom: Spacing.xs },
-  title: { color: Colors.textPrimary, fontSize: 28, fontWeight: '800' },
-  rankHint: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.xs },
-  feedArea: { flex: 1 },
-  demoBanner: {
-    alignSelf: 'center',
-    marginBottom: Spacing.xs,
-    backgroundColor: 'rgba(230, 57, 70, 0.9)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: 20,
-  },
-  demoBannerText: { color: Colors.textPrimary, fontSize: 11, fontWeight: '600' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl },
+  center: { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.matteBlack },
 });

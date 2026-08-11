@@ -1,6 +1,5 @@
 const FEATURES = [
-  { icon: '🏋️', label: 'Feed' },
-  { icon: '📸', label: 'Photos' },
-  { icon: '💬', label: 'Community' },
-  { icon: '⬆️', label: 'Upload' },
+  { icon: '↑↓', label: 'Scroll' },
+  { icon: '←→', label: 'Browse' },
+  { icon: '⬆', label: 'Upload' },
 ];

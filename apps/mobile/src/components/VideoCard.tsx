@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator, Image } from 'react-native';
 import { createElement } from 'react';
-import { getCategoryLabel } from '../constants/categories';
 import { resolvePlaybackUrl } from '../lib/videoUrl';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
 
@@ -28,6 +27,7 @@ interface VideoCardProps {
   onLike: () => void;
   onComment?: () => void;
   height: number;
+  minimal?: boolean;
 }
 
 function WebVideo({ uri }: { uri: string }) {
@@ -51,8 +51,7 @@ function WebVideo({ uri }: { uri: string }) {
   });
 }
 
-export function VideoCard({ post, index, onLike, onComment, height }: VideoCardProps) {
-  const viewLabel = getCategoryLabel(post.category);
+export function VideoCard({ post, index, onLike, onComment, height, minimal = false }: VideoCardProps) {
   const isPhoto = post.media_type === 'photo';
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS && !isPhoto);
@@ -85,48 +84,34 @@ export function VideoCard({ post, index, onLike, onComment, height }: VideoCardP
           post.photo_uri ? (
             <Image source={{ uri: post.photo_uri }} style={styles.photo} resizeMode="cover" />
           ) : (
-            <>
-              <Text style={styles.playIcon}>📷</Text>
-              <Text style={styles.placeholderLabel}>Recipe photo</Text>
-            </>
+            <Text style={styles.playIcon}>📷</Text>
           )
         ) : loadingVideo ? (
           <ActivityIndicator color={Colors.red} size="large" />
         ) : showVideo ? (
           <WebVideo uri={playbackUrl} />
         ) : (
-          <>
-            <Text style={styles.playIcon}>▶</Text>
-            <Text style={styles.placeholderLabel}>
-              {USE_PLACEHOLDERS ? 'Placeholder video' : 'Video preview unavailable'}
-            </Text>
-          </>
+          <Text style={styles.playIcon}>▶</Text>
         )}
       </View>
 
       <View style={styles.overlay} pointerEvents="box-none">
-        {viewLabel && (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{viewLabel}</Text>
-          </View>
-        )}
-        <View style={styles.sideActions}>
+        <View style={[styles.sideActions, minimal && styles.sideActionsMinimal]}>
           <TouchableOpacity style={styles.actionBtn} onPress={onLike}>
             <Text style={styles.actionIcon}>♥</Text>
-            <Text style={styles.actionCount}>{post.like_count}</Text>
+            {!minimal && <Text style={styles.actionCount}>{post.like_count}</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={onComment}>
             <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionCount}>{post.comment_count}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn}>
-            <Text style={styles.actionIcon}>↗</Text>
+            {!minimal && <Text style={styles.actionCount}>{post.comment_count}</Text>}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.bottomInfo}>
+        <View style={[styles.bottomInfo, minimal && styles.bottomInfoMinimal]}>
           <Text style={styles.username}>@{post.author?.username ?? 'user'}</Text>
-          {post.caption && <Text style={styles.caption} numberOfLines={2}>{post.caption}</Text>}
+          {post.caption && (
+            <Text style={styles.caption} numberOfLines={minimal ? 1 : 2}>{post.caption}</Text>
+          )}
         </View>
       </View>
     </View>
@@ -137,24 +122,15 @@ const styles = StyleSheet.create({
   card: { backgroundColor: Colors.matteBlack },
   videoArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   photo: { width: '100%', height: '100%' },
-  playIcon: { fontSize: 48, color: Colors.textMuted },
-  placeholderLabel: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm, textAlign: 'center', paddingHorizontal: Spacing.lg },
+  playIcon: { fontSize: 40, color: Colors.textMuted },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
-  categoryBadge: {
-    position: 'absolute',
-    top: Spacing.md,
-    left: Spacing.md,
-    backgroundColor: 'rgba(230, 57, 70, 0.85)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  categoryText: { color: Colors.textPrimary, fontSize: 11, fontWeight: '700' },
-  sideActions: { position: 'absolute', right: Spacing.md, bottom: Spacing.xxl, gap: Spacing.lg },
+  sideActions: { position: 'absolute', right: Spacing.md, bottom: 100, gap: Spacing.lg },
+  sideActionsMinimal: { bottom: 72, gap: Spacing.md },
   actionBtn: { alignItems: 'center' },
-  actionIcon: { fontSize: 28, color: Colors.textPrimary },
-  actionCount: { color: Colors.textPrimary, fontSize: 12, fontWeight: '600', marginTop: 2 },
-  bottomInfo: { padding: Spacing.lg, paddingBottom: Spacing.xl },
-  username: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  caption: { color: Colors.textSecondary, fontSize: 14, marginTop: Spacing.xs },
+  actionIcon: { fontSize: 24, color: Colors.textPrimary },
+  actionCount: { color: Colors.textPrimary, fontSize: 11, fontWeight: '600', marginTop: 2 },
+  bottomInfo: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  bottomInfoMinimal: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
+  username: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  caption: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
 });
