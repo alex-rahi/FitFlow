@@ -35,7 +35,7 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
                 {option.description}
               </Text>
               <Text style={[styles.destination, active && styles.destinationActive]}>
-                → {option.mediaType === 'photo' ? 'Photo grid' : option.destination === 'community' ? 'Thread' : 'Main feed scroll'}
+                → {option.mediaType === 'photo' ? 'Photo grid' : option.mediaType === 'text' ? 'Text thread' : 'Main feed scroll'}
               </Text>
             </TouchableOpacity>
           );
@@ -67,7 +67,9 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
       <Text style={styles.helper}>
         {activeOption.mediaType === 'photo'
           ? 'Recipe photos are YOLO-scanned and auto-published to the Recipes grid.'
-          : `${activeOption.label} posts are YOLO-moderated and auto-published to ${selectedDestination === 'feed' ? 'Feed' : 'Community'}.`}
+          : activeOption.mediaType === 'text'
+            ? 'Text threads are caption-moderated and auto-published to Community.'
+            : 'Feed videos are YOLO-moderated and auto-published to the main scroll.'}
       </Text>
     </View>
   );

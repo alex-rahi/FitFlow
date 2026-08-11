@@ -11,7 +11,7 @@ export interface VideoPost {
   id: string;
   caption?: string;
   category?: string;
-  media_type?: 'video' | 'photo';
+  media_type?: 'video' | 'photo' | 'text';
   photo_uri?: string | null;
   created_at?: string;
   like_count: number;

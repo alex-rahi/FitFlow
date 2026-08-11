@@ -1,6 +1,6 @@
 export type PostCategoryId = 'meal_prep' | 'nutrition' | 'advice' | 'prs';
 
-export type MediaType = 'video' | 'photo';
+export type MediaType = 'video' | 'photo' | 'text';
 
 export type FeedViewId = 'feed' | 'recipes' | 'community';
 
@@ -55,9 +55,9 @@ export const UPLOAD_VIEW_OPTIONS: UploadViewOption[] = [
   {
     destination: 'community',
     category: 'advice',
-    mediaType: 'video',
+    mediaType: 'text',
     label: 'Community thread',
-    description: 'Start a thread with a clip or coaching question',
+    description: 'Text-only thread — coaching, form checks, and Q&A',
     captionPlaceholder: 'Start a thread or ask the community...',
   },
 ];
@@ -82,8 +82,13 @@ export function isPhotoPost(post: { media_type?: MediaType | null; category?: st
   return post.media_type === 'photo';
 }
 
+export function isTextPost(post: { media_type?: MediaType | null; category?: string | null }): boolean {
+  return post.media_type === 'text';
+}
+
 export function isVideoPost(post: { media_type?: MediaType | null; category?: string | null }): boolean {
-  return post.media_type !== 'photo';
+  if (post.media_type === 'photo' || post.media_type === 'text') return false;
+  return post.media_type === 'video' || post.media_type == null;
 }
 
 export function filterPostsForFeedView<T extends { category?: string | null; media_type?: MediaType | null }>(

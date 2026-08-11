@@ -1,5 +1,15 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, Image } from 'react-native';
+import { useState, createElement } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  Platform,
+  Image,
+  ScrollView,
+  Dimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
@@ -15,9 +25,12 @@ import {
   getFeedViewLabel,
   getUploadOptionForDestination,
 } from '../../src/constants/categories';
-import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { Colors, Radius, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const GRID_CARD_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.sm) / 2;
 
 function notify(title: string, message: string) {
   if (Platform.OS === 'web') {
@@ -25,6 +38,29 @@ function notify(title: string, message: string) {
     return;
   }
   Alert.alert(title, message);
+}
+
+function FeedVideoPreview({ uri }: { uri: string }) {
+  if (Platform.OS === 'web') {
+    return createElement('video', {
+      src: uri,
+      muted: true,
+      playsInline: true,
+      loop: true,
+      style: {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        backgroundColor: '#000',
+      },
+    });
+  }
+  return (
+    <View style={styles.videoSelected}>
+      <Text style={styles.videoSelectedIcon}>▶</Text>
+      <Text style={styles.previewText}>Video selected</Text>
+    </View>
+  );
 }
 
 export default function UploadScreen() {
@@ -40,17 +76,21 @@ export default function UploadScreen() {
   const [moderationStatus, setModerationStatus] = useState<{ status: string; decision?: string | null } | null>(null);
 
   const uploadOption = getUploadOptionForDestination(destination);
-  const isPhotoUpload = uploadOption.mediaType === 'photo';
+  const isFeedUpload = destination === 'feed';
+  const isRecipeUpload = destination === 'recipes';
+  const isThreadUpload = destination === 'community';
 
   const handleSelectDestination = (nextDestination: FeedViewId, nextCategory: PostCategoryId) => {
     setDestination(nextDestination);
     setCategory(nextCategory);
     setMediaUri(null);
+    setFeedback(null);
+    setModerationStatus(null);
   };
 
   const pickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: isPhotoUpload ? ['images'] : ['videos'],
+      mediaTypes: isRecipeUpload ? ['images'] : ['videos'],
       quality: 0.8,
       videoMaxDuration: 60,
     });
@@ -66,7 +106,7 @@ export default function UploadScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: isPhotoUpload ? ['images'] : ['videos'],
+      mediaTypes: isRecipeUpload ? ['images'] : ['videos'],
       quality: 0.8,
       videoMaxDuration: 60,
     });
@@ -75,9 +115,15 @@ export default function UploadScreen() {
     }
   };
 
+  const canSubmit = isThreadUpload ? caption.trim().length > 0 : !!mediaUri;
+
   const handleUpload = async () => {
-    if (!mediaUri) {
-      notify('No media', isPhotoUpload ? 'Please select a recipe photo first.' : 'Please select or record a video first.');
+    if (isThreadUpload && !caption.trim()) {
+      notify('Empty thread', 'Write something to start your community thread.');
+      return;
+    }
+    if (!isThreadUpload && !mediaUri) {
+      notify('No media', isRecipeUpload ? 'Please select a recipe photo first.' : 'Please select or record a video first.');
       return;
     }
     if (!USE_PLACEHOLDERS && !session) {
@@ -96,10 +142,10 @@ export default function UploadScreen() {
         caption || undefined,
         category,
         uploadOption.mediaType,
-        isPhotoUpload ? mediaUri : null,
+        isRecipeUpload ? mediaUri : null,
       );
 
-      if (!isPhotoUpload) {
+      if (isFeedUpload && mediaUri) {
         setStatus('Getting upload URL...');
         const { storage_path } = await api.getUploadUrl(post.id);
 
@@ -110,7 +156,7 @@ export default function UploadScreen() {
         await api.confirmUpload(post.id);
       }
 
-      setStatus('Running YOLO content moderation...');
+      setStatus(isThreadUpload ? 'Running caption moderation...' : 'Running YOLO content moderation...');
       setModerationStatus({ status: 'processing', decision: null });
       const moderated = await api.runYoloModeration(post.id);
 
@@ -119,16 +165,18 @@ export default function UploadScreen() {
         decision: moderated.moderation_decision ?? 'publish',
       });
 
-      const destLabel = getFeedViewLabel(isPhotoUpload ? 'recipes' : destination);
+      const destLabel = getFeedViewLabel(destination);
       analytics.track('upload_complete', {
         post_id: post.id,
         category,
-        feed_view: isPhotoUpload ? 'recipes' : destination,
+        feed_view: destination,
         media_type: uploadOption.mediaType,
         moderation: 'yolo_auto_publish',
       });
 
-      const successMessage = `Passed YOLO moderation — auto-published to ${destLabel}.`;
+      const successMessage = isThreadUpload
+        ? `Thread passed moderation — auto-published to ${destLabel}.`
+        : `Passed YOLO moderation — auto-published to ${destLabel}.`;
       setStatus('');
       setFeedback({ type: 'success', message: successMessage });
       notify('Published', successMessage);
@@ -146,103 +194,199 @@ export default function UploadScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Upload</Text>
-      <Text style={styles.subtitle}>
-        Feed videos, recipe photos, or community threads
-      </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Upload</Text>
+        <Text style={styles.subtitle}>Feed videos, recipe photos, or community threads</Text>
 
-      <View style={styles.preview}>
-        {mediaUri && isPhotoUpload ? (
-          <Image source={{ uri: mediaUri }} style={styles.previewImage} resizeMode="cover" />
-        ) : mediaUri ? (
-          <Text style={styles.previewText}>Video selected ✓</Text>
-        ) : (
-          <Text style={styles.previewPlaceholder}>
-            {isPhotoUpload ? 'No photo selected' : 'No video selected'}
-          </Text>
+        <UploadViewPicker
+          selectedDestination={destination}
+          selectedCategory={category}
+          onSelect={handleSelectDestination}
+        />
+
+        {isFeedUpload && (
+          <View style={styles.feedPreview}>
+            {mediaUri ? (
+              <FeedVideoPreview uri={mediaUri} />
+            ) : (
+              <View style={styles.feedPlaceholder}>
+                <Text style={styles.feedPlaceholderIcon}>▶</Text>
+                <Text style={styles.previewPlaceholder}>Full-screen feed video preview</Text>
+              </View>
+            )}
+          </View>
         )}
-      </View>
 
-      <Input
-        label="Caption"
-        placeholder={uploadOption.captionPlaceholder}
-        value={caption}
-        onChangeText={setCaption}
-        multiline
-      />
+        {isRecipeUpload && (
+          <View style={styles.gridPreviewWrap}>
+            <View style={styles.gridCard}>
+              <View style={styles.gridThumb}>
+                {mediaUri ? (
+                  <Image source={{ uri: mediaUri }} style={styles.gridPhoto} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.gridPhotoIcon}>📷</Text>
+                )}
+              </View>
+              <View style={styles.gridMeta}>
+                <Text style={styles.gridCaption} numberOfLines={2}>
+                  {caption || 'Recipe caption preview'}
+                </Text>
+                <Text style={styles.gridAuthor}>@you</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
-      <UploadViewPicker
-        selectedDestination={destination}
-        selectedCategory={category}
-        onSelect={handleSelectDestination}
-      />
+        {isThreadUpload && (
+          <View style={styles.threadComposer}>
+            <View style={styles.threadAvatar}>
+              <Text style={styles.threadAvatarText}>Y</Text>
+            </View>
+            <View style={styles.threadBody}>
+              <Text style={styles.threadUser}>@you</Text>
+              <Text style={[styles.threadPreview, !caption && styles.threadPreviewEmpty]}>
+                {caption || 'Write your thread below…'}
+              </Text>
+            </View>
+          </View>
+        )}
 
-      {!USE_PLACEHOLDERS && !session && (
-        <Text style={styles.warning}>
-          Log in with your Supabase account to upload.
-        </Text>
-      )}
-
-      <View style={styles.actions}>
-        <Button
-          title={isPhotoUpload ? 'Choose Photo' : 'Choose from Library'}
-          onPress={pickMedia}
-          variant="secondary"
-          disabled={uploading}
+        <Input
+          label={isThreadUpload ? 'Thread' : 'Caption'}
+          placeholder={uploadOption.captionPlaceholder}
+          value={caption}
+          onChangeText={setCaption}
+          multiline
         />
-        <View style={{ height: Spacing.sm }} />
-        <Button
-          title={isPhotoUpload ? 'Take Photo' : 'Record Video'}
-          onPress={captureMedia}
-          variant="secondary"
-          disabled={uploading}
-        />
-        <View style={{ height: Spacing.sm }} />
-        <Button title="Upload" onPress={handleUpload} loading={uploading} disabled={!mediaUri} />
-      </View>
 
-      {status ? (
-        <View style={styles.statusBar}>
-          <ActivityIndicator color={Colors.red} size="small" />
-          <Text style={styles.statusText}>{status}</Text>
-        </View>
-      ) : null}
+        {!USE_PLACEHOLDERS && !session && (
+          <Text style={styles.warning}>Log in with your Supabase account to upload.</Text>
+        )}
 
-      {feedback ? (
-        <View style={[styles.feedback, feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError]}>
-          <Text style={styles.feedbackText}>{feedback.message}</Text>
-          {feedback.type === 'success' && moderationStatus && (
-            <ModerationPipeline
-              status={moderationStatus.status}
-              moderationDecision={moderationStatus.decision}
-              compact
+        {!isThreadUpload && (
+          <View style={styles.actions}>
+            <Button
+              title={isRecipeUpload ? 'Choose Photo' : 'Choose from Library'}
+              onPress={pickMedia}
+              variant="secondary"
+              disabled={uploading}
             />
-          )}
+            <View style={{ height: Spacing.sm }} />
+            <Button
+              title={isRecipeUpload ? 'Take Photo' : 'Record Video'}
+              onPress={captureMedia}
+              variant="secondary"
+              disabled={uploading}
+            />
+          </View>
+        )}
+
+        <View style={[styles.actions, !isThreadUpload && { marginTop: Spacing.sm }]}>
+          <Button
+            title={isThreadUpload ? 'Post thread' : 'Upload'}
+            onPress={handleUpload}
+            loading={uploading}
+            disabled={!canSubmit}
+          />
         </View>
-      ) : null}
+
+        {status ? (
+          <View style={styles.statusBar}>
+            <ActivityIndicator color={Colors.red} size="small" />
+            <Text style={styles.statusText}>{status}</Text>
+          </View>
+        ) : null}
+
+        {feedback ? (
+          <View style={[styles.feedback, feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError]}>
+            <Text style={styles.feedbackText}>{feedback.message}</Text>
+            {feedback.type === 'success' && moderationStatus && (
+              <ModerationPipeline
+                status={moderationStatus.status}
+                moderationDecision={moderationStatus.decision}
+                compact
+              />
+            )}
+          </View>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.matteBlack, padding: Spacing.lg },
+  container: { flex: 1, backgroundColor: Colors.matteBlack },
+  scroll: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
   title: { color: Colors.textPrimary, fontSize: 28, fontWeight: '800' },
   subtitle: { color: Colors.textSecondary, fontSize: 14, marginTop: Spacing.xs, marginBottom: Spacing.lg },
-  preview: {
-    height: 200,
+  feedPreview: {
+    width: '100%',
+    aspectRatio: 9 / 16,
+    maxHeight: 420,
     backgroundColor: Colors.cardBg,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
     marginBottom: Spacing.lg,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-    borderStyle: 'dashed',
+  },
+  feedPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a1a2e',
+  },
+  feedPlaceholderIcon: { fontSize: 48, color: Colors.textMuted, marginBottom: Spacing.sm },
+  videoSelected: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  videoSelectedIcon: { fontSize: 48, color: Colors.textMuted, marginBottom: Spacing.sm },
+  previewText: { color: Colors.success, fontSize: 16, fontWeight: '600' },
+  previewPlaceholder: { color: Colors.textMuted, fontSize: 14, textAlign: 'center', paddingHorizontal: Spacing.lg },
+  gridPreviewWrap: { alignItems: 'center', marginBottom: Spacing.lg },
+  gridCard: {
+    width: GRID_CARD_WIDTH,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  gridThumb: {
+    width: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a3a2e',
     overflow: 'hidden',
   },
-  previewImage: { width: '100%', height: '100%' },
-  previewText: { color: Colors.success, fontSize: 16, fontWeight: '600' },
-  previewPlaceholder: { color: Colors.textMuted, fontSize: 14 },
+  gridPhoto: { width: '100%', height: '100%' },
+  gridPhotoIcon: { fontSize: 32 },
+  gridMeta: { padding: Spacing.sm },
+  gridCaption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  gridAuthor: { color: Colors.textMuted, fontSize: 11, marginTop: Spacing.xs },
+  threadComposer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+  },
+  threadAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  threadAvatarText: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  threadBody: { flex: 1 },
+  threadUser: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  threadPreview: { color: Colors.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 6 },
+  threadPreviewEmpty: { color: Colors.textMuted, fontStyle: 'italic' },
   actions: { marginTop: Spacing.md },
   warning: { color: Colors.red, fontSize: 13, lineHeight: 18, marginBottom: Spacing.sm },
   statusBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.lg },

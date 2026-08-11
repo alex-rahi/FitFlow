@@ -90,10 +90,12 @@ function ThreadCard({
           </View>
           <Text style={styles.opText}>{post.caption ?? 'Started a thread'}</Text>
 
-          <TouchableOpacity style={styles.clipStrip} onPress={() => onOpen(post, index)} activeOpacity={0.85}>
-            <Text style={styles.clipIcon}>▶</Text>
-            <Text style={styles.clipLabel}>Watch attached clip</Text>
-          </TouchableOpacity>
+          {post.media_type === 'video' && (
+            <TouchableOpacity style={styles.clipStrip} onPress={() => onOpen(post, index)} activeOpacity={0.85}>
+              <Text style={styles.clipIcon}>▶</Text>
+              <Text style={styles.clipLabel}>Watch attached clip</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.opActions}>
             <TouchableOpacity onPress={() => onLike(post.id)} style={styles.actionBtn}>
