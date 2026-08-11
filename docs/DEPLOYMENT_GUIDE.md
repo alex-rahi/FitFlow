@@ -1,5 +1,7 @@
 # Deployment Guide
 
+For connecting **GymTok_Demo_V3** Supabase to Render + Vercel, see **[PRODUCTION_SETUP.md](./PRODUCTION_SETUP.md)**.
+
 ## Local
 
 ```bash
