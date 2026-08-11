@@ -14,8 +14,10 @@ import {
   PLACEHOLDER_PROFILE,
   PLACEHOLDER_USERS,
   PLACEHOLDER_NOTIFICATIONS,
+  PLACEHOLDER_USER_ID,
   USE_PLACEHOLDERS,
 } from '../constants/theme';
+import { rankPostsByEngagement } from './feedRanking';
 import { createPlaceholderSession, delay } from './placeholders';
 import { supabase } from './supabase';
 import { API_URL } from '../constants/theme';
@@ -129,12 +131,12 @@ class ApiClient {
 
     const data = await this.getFeed(cursor, 'main_feed');
     return {
-      posts: filterPostsForFeedView(data.posts, 'feed'),
+      posts: rankPostsByEngagement(filterPostsForFeedView(data.posts, 'feed')),
       next_cursor: data.next_cursor,
     };
   };
 
-  createPost = async (caption?: string, category: string = 'meal_prep') => {
+  createPost = async (caption?: string, category: string = 'prs') => {
     if (USE_PLACEHOLDERS) {
       await delay(500);
       return {
@@ -152,7 +154,40 @@ class ApiClient {
   };
 
   getPost = (id: string) => this.request<any>(`/posts/${id}`);
-  getUserPosts = (userId: string) => this.request<any[]>(`/posts/user/${userId}`);
+
+  getUserPosts = async (userId: string) => {
+    try {
+      return await this.request<any[]>(`/posts/user/${userId}`);
+    } catch {
+      if (USE_PLACEHOLDERS) {
+        await delay(200);
+        return PLACEHOLDER_POSTS.filter(
+          (post) => post.user_id === userId || userId === PLACEHOLDER_USER_ID,
+        );
+      }
+      return [];
+    }
+  };
+
+  searchPosts = async (query: string, view: FeedViewId) => {
+    const q = query.toLowerCase();
+    if (USE_PLACEHOLDERS) {
+      await delay(200);
+      return filterPostsForFeedView(PLACEHOLDER_POSTS, view).filter((post) =>
+        (post.caption ?? '').toLowerCase().includes(q)
+        || (post.author?.username ?? '').toLowerCase().includes(q),
+      );
+    }
+    try {
+      const data = await this.getFeedView(view);
+      return data.posts.filter((post: { caption?: string; author?: { username?: string } }) =>
+        (post.caption ?? '').toLowerCase().includes(q)
+        || (post.author?.username ?? '').toLowerCase().includes(q),
+      );
+    } catch {
+      return [];
+    }
+  };
 
   getUploadUrl = async (postId: string) => {
     if (USE_PLACEHOLDERS) {

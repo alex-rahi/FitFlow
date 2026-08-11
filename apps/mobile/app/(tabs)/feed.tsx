@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommentSheet } from '../../src/components/CommentSheet';
-import { CategoryTabs } from '../../src/components/CategoryTabs';
+import { FeedViewTabs } from '../../src/components/FeedViewTabs';
 import { PostDetailOverlay } from '../../src/components/PostDetailOverlay';
 import { ScrollFeedLayout } from '../../src/components/feeds/ScrollFeedLayout';
 import { GridFeedLayout } from '../../src/components/feeds/GridFeedLayout';
@@ -24,19 +24,19 @@ const EMPTY_COPY: Record<FeedViewId, { title: string; subtitle: string }> = {
   feed: {
     title: 'No videos here yet',
     subtitle: USE_PLACEHOLDERS
-      ? 'Upload a PR or workout clip to populate the feed'
+      ? 'Upload a workout or PR to populate the feed'
       : 'Follow creators or upload your first workout video',
   },
   recipes: {
     title: 'No recipes yet',
     subtitle: USE_PLACEHOLDERS
-      ? 'Upload a meal prep or nutrition video to fill the grid'
+      ? 'Upload a recipe video to fill the grid'
       : 'Share meal prep and nutrition content to get started',
   },
   community: {
     title: 'No threads yet',
     subtitle: USE_PLACEHOLDERS
-      ? 'Post advice or form-check videos to start a discussion'
+      ? 'Post a community thread to start a discussion'
       : 'Ask questions and share coaching tips with the community',
   },
 };
@@ -170,7 +170,10 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <CategoryTabs selected={view} onSelect={handleViewChange} />
+      <FeedViewTabs selected={view} onSelect={handleViewChange} />
+      {view === 'feed' && posts.length > 0 && (
+        <Text style={styles.rankHint}>Ranked by engagement, comments, and recency</Text>
+      )}
       {USE_PLACEHOLDERS && (
         <View style={styles.demoBanner}>
           <Text style={styles.demoBannerText}>Demo mode — using placeholder data</Text>
@@ -216,6 +219,13 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.matteBlack },
   feedArea: { flex: 1 },
+  rankHint: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginBottom: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+  },
   demoBanner: {
     alignSelf: 'center',
     marginBottom: Spacing.xs,

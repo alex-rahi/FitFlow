@@ -9,6 +9,7 @@ from app.db.pool import get_pool
 from app.integrations.storage import create_signed_upload_url
 from app.models.categories import PostCategory
 from app.models.schemas import PostCreate, PostResponse, PostStatus, UploadUrlResponse, UserProfile
+from app.services.feed_ranking import feed_rank_order_sql, rank_posts
 
 logger = logging.getLogger("gymtok.api")
 
@@ -175,6 +176,8 @@ async def get_feed(
         posts = PLACEHOLDER_POSTS
         if category and category != PostCategory.MAIN_FEED:
             posts = [p for p in posts if p.get("category") == category.value]
+        elif not category or category == PostCategory.MAIN_FEED:
+            posts = rank_posts(posts)
         return [_placeholder_post_response(dict(p)) for p in posts[:limit]]
 
     pool = await get_pool()
@@ -196,10 +199,10 @@ async def get_feed(
         cursor_idx = len(params) + 1
         limit_idx = cursor_idx + 1
         if cursor:
-            query += f" AND p.created_at < ${cursor_idx} ORDER BY p.created_at DESC LIMIT ${limit_idx}"
+            query += f" AND p.created_at < ${cursor_idx} ORDER BY {feed_rank_order_sql('p')} LIMIT ${limit_idx}"
             params.extend([cursor, limit])
         else:
-            query += f" ORDER BY p.created_at DESC LIMIT ${cursor_idx}"
+            query += f" ORDER BY {feed_rank_order_sql('p')} LIMIT ${cursor_idx}"
             params.append(limit)
         rows = await pool.fetch(query, *params)
     else:
@@ -219,13 +222,13 @@ async def get_feed(
                 )
         elif cursor:
             rows = await pool.fetch(
-                """SELECT * FROM posts WHERE status = 'published' AND created_at < $1
-                   ORDER BY created_at DESC LIMIT $2""",
+                f"""SELECT * FROM posts WHERE status = 'published' AND created_at < $1
+                   ORDER BY {feed_rank_order_sql()} LIMIT $2""",
                 cursor, limit,
             )
         else:
             rows = await pool.fetch(
-                "SELECT * FROM posts WHERE status = 'published' ORDER BY created_at DESC LIMIT $1",
+                f"SELECT * FROM posts WHERE status = 'published' ORDER BY {feed_rank_order_sql()} LIMIT $1",
                 limit,
             )
     return [await _attach_author(dict(r)) for r in rows]

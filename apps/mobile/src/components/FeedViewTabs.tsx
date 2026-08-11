@@ -7,7 +7,7 @@ interface Props {
   onSelect: (id: FeedViewId) => void;
 }
 
-export function CategoryTabs({ selected, onSelect }: Props) {
+export function FeedViewTabs({ selected, onSelect }: Props) {
   return (
     <ScrollView
       horizontal
