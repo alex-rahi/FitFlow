@@ -11,6 +11,8 @@ import { VideoPost } from '../../src/components/VideoCard';
 import { api } from '../../src/lib/api';
 import { FeedViewId, getFeedViewLayout } from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { analytics } from '../../src/lib/analytics';
+import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 interface CommentTarget {
   postId: string;
@@ -40,6 +42,7 @@ const EMPTY_COPY: Record<FeedViewId, { title: string; subtitle: string }> = {
 };
 
 export default function FeedScreen() {
+  useScreenAnalytics('feed');
   const [posts, setPosts] = useState<VideoPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<string | undefined>();
@@ -72,12 +75,16 @@ export default function FeedScreen() {
   }, [view, loadFeed]);
 
   const handleViewChange = (id: FeedViewId) => {
-    if (id !== view) setView(id);
+    if (id !== view) {
+      analytics.track('feed_view_change', { from: view, to: id });
+      setView(id);
+    }
   };
 
   const handleLike = async (postId: string) => {
     try {
       await api.likePost(postId);
+      analytics.track('like', { post_id: postId, feed_view: view });
       setPosts(prev => prev.map(p =>
         p.id === postId ? { ...p, like_count: p.like_count + 1 } : p
       ));
@@ -85,6 +92,7 @@ export default function FeedScreen() {
   };
 
   const handleOpenPost = (post: VideoPost, index: number) => {
+    analytics.track('video_open', { post_id: post.id, category: post.category, index, feed_view: view });
     setDetailPost({ post, index });
   };
 
@@ -99,6 +107,7 @@ export default function FeedScreen() {
   const handleCommentAdded = () => {
     setThreadRefresh(k => k + 1);
     if (commentTarget) {
+      analytics.track('comment', { post_id: commentTarget.postId, feed_view: view });
       setPosts(prev => prev.map(p =>
         p.id === commentTarget.postId ? { ...p, comment_count: p.comment_count + 1 } : p
       ));

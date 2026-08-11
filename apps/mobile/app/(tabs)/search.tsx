@@ -4,8 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '../../src/components/Input';
 import { api } from '../../src/lib/api';
 import { Colors, Radius, Spacing } from '../../src/constants/theme';
+import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 export default function SearchScreen() {
+  useScreenAnalytics('search');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

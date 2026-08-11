@@ -6,8 +6,10 @@ import { Button } from '../../src/components/Button';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import { Colors, Radius, Spacing } from '../../src/constants/theme';
+import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 export default function ProfileScreen() {
+  useScreenAnalytics('profile');
   const { signOut } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);

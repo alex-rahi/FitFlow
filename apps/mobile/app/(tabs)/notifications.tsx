@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { api } from '../../src/lib/api';
 import { Colors, Spacing } from '../../src/constants/theme';
+import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 const TYPE_ICONS: Record<string, string> = {
   like: '♥',
@@ -13,6 +14,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function NotificationsScreen() {
+  useScreenAnalytics('notifications');
   const router = useRouter();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
