@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { VideoPost } from '../VideoCard';
 import { AdPlaceholder } from '../AdPlaceholder';
 import { PLACEHOLDER_ADS } from '../../constants/ads';
@@ -56,7 +56,11 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
           onPress={() => onOpen(item, index)}
         >
           <View style={[styles.thumb, { backgroundColor: GRADIENTS[index % GRADIENTS.length] }]}>
-            <Text style={styles.playIcon}>▶</Text>
+            {item.media_type === 'photo' && item.photo_uri ? (
+              <Image source={{ uri: item.photo_uri }} style={styles.photo} resizeMode="cover" />
+            ) : (
+              <Text style={styles.photoIcon}>📷</Text>
+            )}
           </View>
           <View style={styles.meta}>
             <Text style={styles.caption} numberOfLines={2}>{item.caption ?? 'Untitled'}</Text>
@@ -89,8 +93,10 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  playIcon: { fontSize: 28, color: Colors.textMuted },
+  photo: { width: '100%', height: '100%' },
+  photoIcon: { fontSize: 32 },
   meta: { padding: Spacing.sm },
   caption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.xs },

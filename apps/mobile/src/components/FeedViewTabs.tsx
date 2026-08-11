@@ -1,5 +1,5 @@
 import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FEED_VIEWS, FeedViewId } from '../constants/categories';
+import { FeedViewId, TAB_VIEWS } from '../constants/categories';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
   onSelect: (id: FeedViewId) => void;
 }
 
+/** Optional in-screen tabs (e.g. profile). Primary navigation uses bottom tabs. */
 export function FeedViewTabs({ selected, onSelect }: Props) {
   return (
     <ScrollView
@@ -15,7 +16,7 @@ export function FeedViewTabs({ selected, onSelect }: Props) {
       contentContainerStyle={styles.row}
       style={styles.container}
     >
-      {FEED_VIEWS.map((view) => {
+      {TAB_VIEWS.map((view) => {
         const active = selected === view.id;
         return (
           <TouchableOpacity

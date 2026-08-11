@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { UploadViewPicker } from '../../src/components/UploadViewPicker';
+import { ModerationPipeline } from '../../src/components/ModerationPipeline';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
@@ -12,12 +13,11 @@ import {
   FeedViewId,
   PostCategoryId,
   getFeedViewLabel,
-  getUploadOptionForView,
+  getUploadOptionForDestination,
 } from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
-import { ModerationPipeline } from '../../src/components/ModerationPipeline';
 
 function notify(title: string, message: string) {
   if (Platform.OS === 'web') {
@@ -31,51 +31,53 @@ export default function UploadScreen() {
   useScreenAnalytics('upload');
   const { session } = useAuth();
   const [caption, setCaption] = useState('');
-  const [view, setView] = useState<FeedViewId>('feed');
+  const [destination, setDestination] = useState<FeedViewId>('feed');
   const [category, setCategory] = useState<PostCategoryId>('prs');
-  const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [moderationStatus, setModerationStatus] = useState<{ status: string; decision?: string | null } | null>(null);
 
-  const uploadOption = getUploadOptionForView(view);
+  const uploadOption = getUploadOptionForDestination(destination);
+  const isPhotoUpload = uploadOption.mediaType === 'photo';
 
-  const handleSelectView = (nextView: FeedViewId, nextCategory: PostCategoryId) => {
-    setView(nextView);
+  const handleSelectDestination = (nextDestination: FeedViewId, nextCategory: PostCategoryId) => {
+    setDestination(nextDestination);
     setCategory(nextCategory);
+    setMediaUri(null);
   };
 
-  const pickVideo = async () => {
+  const pickMedia = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
+      mediaTypes: isPhotoUpload ? ['images'] : ['videos'],
       quality: 0.8,
       videoMaxDuration: 60,
     });
     if (!result.canceled && result.assets[0]) {
-      setVideoUri(result.assets[0].uri);
+      setMediaUri(result.assets[0].uri);
     }
   };
 
-  const recordVideo = async () => {
+  const captureMedia = async () => {
     const { status: perm } = await ImagePicker.requestCameraPermissionsAsync();
     if (perm !== 'granted') {
-      Alert.alert('Permission needed', 'Camera access is required to record videos.');
+      Alert.alert('Permission needed', 'Camera access is required.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['videos'],
+      mediaTypes: isPhotoUpload ? ['images'] : ['videos'],
       quality: 0.8,
       videoMaxDuration: 60,
     });
     if (!result.canceled && result.assets[0]) {
-      setVideoUri(result.assets[0].uri);
+      setMediaUri(result.assets[0].uri);
     }
   };
 
   const handleUpload = async () => {
-    if (!videoUri) {
-      notify('No video', 'Please select or record a video first.');
+    if (!mediaUri) {
+      notify('No media', isPhotoUpload ? 'Please select a recipe photo first.' : 'Please select or record a video first.');
       return;
     }
     if (!USE_PLACEHOLDERS && !session) {
@@ -89,32 +91,51 @@ export default function UploadScreen() {
     setFeedback(null);
     setStatus('Creating post...');
     try {
-      const post = await api.createPost(caption || undefined, category);
+      const post = await api.createPost(
+        caption || undefined,
+        category,
+        uploadOption.mediaType,
+        isPhotoUpload ? mediaUri : null,
+      );
+
+      if (isPhotoUpload) {
+        analytics.track('upload_complete', { post_id: post.id, category, feed_view: 'recipes', media_type: 'photo' });
+        const successMessage = USE_PLACEHOLDERS
+          ? 'Recipe photo added to the Recipes grid (demo mode).'
+          : 'Your recipe photo was uploaded and will appear in Recipes once approved.';
+        setFeedback({ type: 'success', message: successMessage });
+        notify('Success', successMessage);
+        setCaption('');
+        setMediaUri(null);
+        setStatus('');
+        return;
+      }
+
       setStatus('Getting upload URL...');
       const { storage_path } = await api.getUploadUrl(post.id);
 
       setStatus('Uploading video...');
-      await uploadVideoFile(storage_path, videoUri);
+      await uploadVideoFile(storage_path, mediaUri);
 
       setStatus('Confirming upload...');
       const confirmed = await api.confirmUpload(post.id);
 
-      analytics.track('upload_complete', { post_id: post.id, category, feed_view: view });
+      analytics.track('upload_complete', { post_id: post.id, category, feed_view: destination });
 
       setModerationStatus({
         status: confirmed.status ?? 'processing',
         decision: confirmed.moderation_decision,
       });
 
-      const destination = getFeedViewLabel(view);
+      const destLabel = getFeedViewLabel(destination);
       const successMessage = USE_PLACEHOLDERS
-        ? `Demo upload complete. In production, your post would appear in ${destination} after approval.`
-        : `Your post was uploaded and will appear in ${destination} once approved.`;
+        ? `Demo upload complete. In production, your post would appear in ${destLabel} after YOLO moderation.`
+        : `Your video was uploaded and will appear in ${destLabel} once approved.`;
       setStatus('');
       setFeedback({ type: 'success', message: successMessage });
       notify('Success', successMessage);
       setCaption('');
-      setVideoUri(null);
+      setMediaUri(null);
     } catch (err: any) {
       const message = err?.message ?? 'Upload failed';
       setStatus('');
@@ -128,13 +149,19 @@ export default function UploadScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Upload</Text>
-      <Text style={styles.subtitle}>Share a workout, recipe, or community post</Text>
+      <Text style={styles.subtitle}>
+        Feed videos, recipe photos, or community threads
+      </Text>
 
       <View style={styles.preview}>
-        {videoUri ? (
+        {mediaUri && isPhotoUpload ? (
+          <Image source={{ uri: mediaUri }} style={styles.previewImage} resizeMode="cover" />
+        ) : mediaUri ? (
           <Text style={styles.previewText}>Video selected ✓</Text>
         ) : (
-          <Text style={styles.previewPlaceholder}>No video selected</Text>
+          <Text style={styles.previewPlaceholder}>
+            {isPhotoUpload ? 'No photo selected' : 'No video selected'}
+          </Text>
         )}
       </View>
 
@@ -147,23 +174,33 @@ export default function UploadScreen() {
       />
 
       <UploadViewPicker
-        selectedView={view}
+        selectedDestination={destination}
         selectedCategory={category}
-        onSelectView={handleSelectView}
+        onSelect={handleSelectDestination}
       />
 
       {!USE_PLACEHOLDERS && !session && (
         <Text style={styles.warning}>
-          Log in with your Supabase account to upload. Sign up alone is not enough — use Log In after creating your account.
+          Log in with your Supabase account to upload.
         </Text>
       )}
 
       <View style={styles.actions}>
-        <Button title="Choose from Library" onPress={pickVideo} variant="secondary" disabled={uploading} />
+        <Button
+          title={isPhotoUpload ? 'Choose Photo' : 'Choose from Library'}
+          onPress={pickMedia}
+          variant="secondary"
+          disabled={uploading}
+        />
         <View style={{ height: Spacing.sm }} />
-        <Button title="Record Video" onPress={recordVideo} variant="secondary" disabled={uploading} />
+        <Button
+          title={isPhotoUpload ? 'Take Photo' : 'Record Video'}
+          onPress={captureMedia}
+          variant="secondary"
+          disabled={uploading}
+        />
         <View style={{ height: Spacing.sm }} />
-        <Button title="Upload" onPress={handleUpload} loading={uploading} disabled={!videoUri} />
+        <Button title="Upload" onPress={handleUpload} loading={uploading} disabled={!mediaUri} />
       </View>
 
       {status ? (
@@ -176,7 +213,7 @@ export default function UploadScreen() {
       {feedback ? (
         <View style={[styles.feedback, feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError]}>
           <Text style={styles.feedbackText}>{feedback.message}</Text>
-          {feedback.type === 'success' && moderationStatus && (
+          {feedback.type === 'success' && !isPhotoUpload && moderationStatus && (
             <ModerationPipeline
               status={moderationStatus.status}
               moderationDecision={moderationStatus.decision}
@@ -194,34 +231,26 @@ const styles = StyleSheet.create({
   title: { color: Colors.textPrimary, fontSize: 28, fontWeight: '800' },
   subtitle: { color: Colors.textSecondary, fontSize: 14, marginTop: Spacing.xs, marginBottom: Spacing.lg },
   preview: {
-    height: 200, backgroundColor: Colors.cardBg, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg,
-    borderWidth: 1, borderColor: Colors.borderSubtle, borderStyle: 'dashed',
+    height: 200,
+    backgroundColor: Colors.cardBg,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
   },
+  previewImage: { width: '100%', height: '100%' },
   previewText: { color: Colors.success, fontSize: 16, fontWeight: '600' },
   previewPlaceholder: { color: Colors.textMuted, fontSize: 14 },
   actions: { marginTop: Spacing.md },
-  warning: {
-    color: Colors.red,
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: Spacing.sm,
-  },
+  warning: { color: Colors.red, fontSize: 13, lineHeight: 18, marginBottom: Spacing.sm },
   statusBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.lg },
   statusText: { color: Colors.textSecondary, fontSize: 14 },
-  feedback: {
-    marginTop: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  feedbackSuccess: {
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
-    borderColor: 'rgba(34, 197, 94, 0.35)',
-  },
-  feedbackError: {
-    backgroundColor: 'rgba(230, 57, 70, 0.12)',
-    borderColor: 'rgba(230, 57, 70, 0.35)',
-  },
+  feedback: { marginTop: Spacing.md, padding: Spacing.md, borderRadius: 12, borderWidth: 1 },
+  feedbackSuccess: { backgroundColor: 'rgba(34, 197, 94, 0.12)', borderColor: 'rgba(34, 197, 94, 0.35)' },
+  feedbackError: { backgroundColor: 'rgba(230, 57, 70, 0.12)', borderColor: 'rgba(230, 57, 70, 0.35)' },
   feedbackText: { color: Colors.textPrimary, fontSize: 14, lineHeight: 20 },
 });

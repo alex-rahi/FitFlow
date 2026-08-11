@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { FeedViewId, filterPostsForFeedView, getFeedViewLabel } from '../constants/categories';
 import { VideoPost } from './VideoCard';
 import { Colors, Radius, Spacing } from '../constants/theme';
@@ -22,7 +22,7 @@ export function ProfilePostsPanel({ posts, view, onOpen }: Props) {
         <Text style={styles.emptyTitle}>No {getFeedViewLabel(view).toLowerCase()} posts yet</Text>
         <Text style={styles.emptySubtitle}>
           {view === 'feed' && 'Upload a workout or PR to fill your feed.'}
-          {view === 'recipes' && 'Share a recipe or meal prep video.'}
+          {view === 'recipes' && 'Upload a recipe photo from the Upload tab.'}
           {view === 'community' && 'Start a community thread or form-check post.'}
         </Text>
       </View>
@@ -40,7 +40,11 @@ export function ProfilePostsPanel({ posts, view, onOpen }: Props) {
             onPress={() => onOpen?.(post, index)}
           >
             <View style={styles.gridThumb}>
-              <Text style={styles.playIcon}>▶</Text>
+              {post.media_type === 'photo' && post.photo_uri ? (
+                <Image source={{ uri: post.photo_uri }} style={styles.gridPhoto} resizeMode="cover" />
+              ) : (
+                <Text style={styles.playIcon}>📷</Text>
+              )}
             </View>
             <Text style={styles.gridCaption} numberOfLines={2}>{post.caption ?? 'Untitled'}</Text>
             <Text style={styles.gridMeta}>♥ {post.like_count}</Text>
@@ -114,7 +118,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a3a2e',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  gridPhoto: { width: '100%', height: '100%' },
   gridCaption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', padding: Spacing.sm },
   gridMeta: { color: Colors.red, fontSize: 11, fontWeight: '600', paddingHorizontal: Spacing.sm, paddingBottom: Spacing.sm },
   list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.sm },

@@ -16,11 +16,13 @@ export default function TabLayout() {
       tabBarInactiveTintColor: Colors.textMuted,
       tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
     }}>
-      <Tabs.Screen name="feed" options={{ title: 'Home', tabBarIcon: () => null }} />
-      <Tabs.Screen name="search" options={{ title: 'Search', tabBarIcon: () => null }} />
+      <Tabs.Screen name="feed" options={{ title: 'Feed', tabBarIcon: () => null }} />
+      <Tabs.Screen name="recipes" options={{ title: 'Recipes', tabBarIcon: () => null }} />
       <Tabs.Screen name="upload" options={{ title: 'Upload', tabBarIcon: () => null }} />
-      <Tabs.Screen name="notifications" options={{ title: 'Alerts', tabBarIcon: () => null }} />
+      <Tabs.Screen name="community" options={{ title: 'Community', tabBarIcon: () => null }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: () => null }} />
+      <Tabs.Screen name="search" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
   );
 }

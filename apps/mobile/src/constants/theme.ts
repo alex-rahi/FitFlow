@@ -145,6 +145,54 @@ export const PLACEHOLDER_POSTS = [
   },
 ];
 
+export const PLACEHOLDER_RECIPE_PHOTOS = [
+  {
+    id: '10000000-0000-4000-8000-000000000010',
+    user_id: '00000000-0000-4000-8000-000000000002',
+    category: 'meal_prep',
+    media_type: 'photo' as const,
+    caption: 'High-protein chicken bowls — 450 cal each',
+    photo_uri: null,
+    thumbnail_url: null,
+    status: 'published',
+    like_count: 640,
+    comment_count: 22,
+    view_count: 4100,
+    created_at: '2025-07-29T12:00:00Z',
+    author: { username: 'fitness_jade', display_name: 'Jade Fitness' },
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000011',
+    user_id: PLACEHOLDER_USER_ID,
+    category: 'nutrition',
+    media_type: 'photo' as const,
+    caption: 'Overnight oats — 35g protein breakfast',
+    photo_uri: null,
+    thumbnail_url: null,
+    status: 'published',
+    like_count: 512,
+    comment_count: 18,
+    view_count: 3200,
+    created_at: '2025-07-28T08:30:00Z',
+    author: { username: 'alex_lifts', display_name: 'Alex Lifts' },
+  },
+  {
+    id: '10000000-0000-4000-8000-000000000012',
+    user_id: '00000000-0000-4000-8000-000000000003',
+    category: 'meal_prep',
+    media_type: 'photo' as const,
+    caption: 'Turkey chili — 6 servings meal prep',
+    photo_uri: null,
+    thumbnail_url: null,
+    status: 'published',
+    like_count: 890,
+    comment_count: 41,
+    view_count: 5600,
+    created_at: '2025-07-27T17:00:00Z',
+    author: { username: 'bench_king', display_name: 'Bench King' },
+  },
+];
+
 export const PLACEHOLDER_USERS = [
   PLACEHOLDER_PROFILE,
   {

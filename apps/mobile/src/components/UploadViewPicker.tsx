@@ -4,30 +4,30 @@ import {
   PostCategoryId,
   RECIPE_SUBCATEGORIES,
   UPLOAD_VIEW_OPTIONS,
-  getUploadOptionForView,
+  getUploadOptionForDestination,
 } from '../constants/categories';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
 interface Props {
-  selectedView: FeedViewId;
+  selectedDestination: FeedViewId;
   selectedCategory: PostCategoryId;
-  onSelectView: (view: FeedViewId, category: PostCategoryId) => void;
+  onSelect: (destination: FeedViewId, category: PostCategoryId) => void;
 }
 
-export function UploadViewPicker({ selectedView, selectedCategory, onSelectView }: Props) {
-  const activeOption = getUploadOptionForView(selectedView);
+export function UploadViewPicker({ selectedDestination, selectedCategory, onSelect }: Props) {
+  const activeOption = getUploadOptionForDestination(selectedDestination);
 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>Post to</Text>
       <View style={styles.grid}>
         {UPLOAD_VIEW_OPTIONS.map((option) => {
-          const active = selectedView === option.view;
+          const active = selectedDestination === option.destination;
           return (
             <TouchableOpacity
-              key={option.view}
+              key={option.destination}
               style={[styles.chip, active && styles.chipActive]}
-              onPress={() => onSelectView(option.view, option.category)}
+              onPress={() => onSelect(option.destination, option.category)}
               activeOpacity={0.8}
             >
               <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{option.label}</Text>
@@ -35,14 +35,14 @@ export function UploadViewPicker({ selectedView, selectedCategory, onSelectView 
                 {option.description}
               </Text>
               <Text style={[styles.destination, active && styles.destinationActive]}>
-                → {option.view === 'feed' ? 'Feed scroll' : option.view === 'recipes' ? 'Recipes grid' : 'Community threads'}
+                → {option.mediaType === 'photo' ? 'Photo grid' : option.destination === 'community' ? 'Thread' : 'Main feed scroll'}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {selectedView === 'recipes' && (
+      {selectedDestination === 'recipes' && (
         <View style={styles.subPicker}>
           <Text style={styles.subLabel}>Recipe type</Text>
           <View style={styles.subRow}>
@@ -53,7 +53,7 @@ export function UploadViewPicker({ selectedView, selectedCategory, onSelectView 
                 <TouchableOpacity
                   key={category}
                   style={[styles.subChip, active && styles.subChipActive]}
-                  onPress={() => onSelectView('recipes', category)}
+                  onPress={() => onSelect('recipes', category)}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.subChipText, active && styles.subChipTextActive]}>{label}</Text>
@@ -65,7 +65,9 @@ export function UploadViewPicker({ selectedView, selectedCategory, onSelectView 
       )}
 
       <Text style={styles.helper}>
-        {activeOption.label} posts appear in {selectedView === 'feed' ? 'the main Feed' : selectedView === 'recipes' ? 'Recipes' : 'Community'} once approved.
+        {activeOption.mediaType === 'photo'
+          ? 'Recipe photos appear in the Recipes grid tab once approved.'
+          : `${activeOption.label} posts appear in ${selectedDestination === 'feed' ? 'Feed' : 'Community'} once approved.`}
       </Text>
     </View>
   );

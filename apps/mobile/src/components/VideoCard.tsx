@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator, Image } from 'react-native';
 import { createElement } from 'react';
 import { getFeedViewLabelForPost } from '../constants/categories';
 import { resolvePlaybackUrl } from '../lib/videoUrl';
@@ -11,6 +11,8 @@ export interface VideoPost {
   id: string;
   caption?: string;
   category?: string;
+  media_type?: 'video' | 'photo';
+  photo_uri?: string | null;
   created_at?: string;
   like_count: number;
   comment_count: number;
@@ -50,13 +52,14 @@ function WebVideo({ uri }: { uri: string }) {
 }
 
 export function VideoCard({ post, index, onLike, onComment, height }: VideoCardProps) {
-  const viewLabel = getFeedViewLabelForPost(post.category);
+  const viewLabel = getFeedViewLabelForPost(post.category, post.media_type);
+  const isPhoto = post.media_type === 'photo';
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
-  const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS);
+  const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS && !isPhoto);
 
   useEffect(() => {
     let active = true;
-    if (USE_PLACEHOLDERS) {
+    if (isPhoto || USE_PLACEHOLDERS) {
       setLoadingVideo(false);
       return;
     }
@@ -71,14 +74,23 @@ export function VideoCard({ post, index, onLike, onComment, height }: VideoCardP
     return () => {
       active = false;
     };
-  }, [post.id, post.raw_video_url, post.processed_video_url]);
+  }, [isPhoto, post.id, post.raw_video_url, post.processed_video_url]);
 
-  const showVideo = playbackUrl && Platform.OS === 'web';
+  const showVideo = !isPhoto && playbackUrl && Platform.OS === 'web';
 
   return (
     <View style={[styles.card, { height }]}>
       <View style={[styles.videoArea, { backgroundColor: PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length] }]}>
-        {loadingVideo ? (
+        {isPhoto ? (
+          post.photo_uri ? (
+            <Image source={{ uri: post.photo_uri }} style={styles.photo} resizeMode="cover" />
+          ) : (
+            <>
+              <Text style={styles.playIcon}>📷</Text>
+              <Text style={styles.placeholderLabel}>Recipe photo</Text>
+            </>
+          )
+        ) : loadingVideo ? (
           <ActivityIndicator color={Colors.red} size="large" />
         ) : showVideo ? (
           <WebVideo uri={playbackUrl} />
@@ -124,6 +136,7 @@ export function VideoCard({ post, index, onLike, onComment, height }: VideoCardP
 const styles = StyleSheet.create({
   card: { backgroundColor: Colors.matteBlack },
   videoArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  photo: { width: '100%', height: '100%' },
   playIcon: { fontSize: 48, color: Colors.textMuted },
   placeholderLabel: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm, textAlign: 'center', paddingHorizontal: Spacing.lg },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
