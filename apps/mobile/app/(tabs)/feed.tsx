@@ -27,6 +27,7 @@ export default function FeedScreen() {
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
   const [detailPost, setDetailPost] = useState<{ post: VideoPost; index: number } | null>(null);
   const [threadRefresh, setThreadRefresh] = useState(0);
+  const [feedHeight, setFeedHeight] = useState(0);
 
   const layout = getCategoryLayout(category);
 
@@ -140,6 +141,7 @@ export default function FeedScreen() {
             posts={posts}
             loading={loading}
             hasMore={!!cursor}
+            itemHeight={feedHeight}
             onLoadMore={() => cursor && loadFeed(cursor, category)}
             onLike={handleLike}
             onComment={(postId) => setCommentTarget({ postId })}
@@ -149,14 +151,28 @@ export default function FeedScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <CategoryTabs selected={category} onSelect={handleCategoryChange} />
       {USE_PLACEHOLDERS && (
         <View style={styles.demoBanner}>
           <Text style={styles.demoBannerText}>Demo mode — using placeholder data</Text>
         </View>
       )}
-      {renderFeed()}
+      <View
+        style={styles.feedArea}
+        onLayout={(event) => {
+          const nextHeight = Math.floor(event.nativeEvent.layout.height);
+          if (nextHeight > 0 && nextHeight !== feedHeight) {
+            setFeedHeight(nextHeight);
+          }
+        }}
+      >
+        {feedHeight > 0 ? renderFeed() : (
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.red} size="large" />
+          </View>
+        )}
+      </View>
       <CommentSheet
         visible={!!commentTarget}
         postId={commentTarget?.postId ?? ''}
@@ -168,18 +184,21 @@ export default function FeedScreen() {
       <PostDetailOverlay
         post={detailPost?.post ?? null}
         index={detailPost?.index ?? 0}
+        itemHeight={feedHeight}
         onClose={() => setDetailPost(null)}
         onLike={() => detailPost && handleLike(detailPost.post.id)}
         onComment={() => detailPost && setCommentTarget({ postId: detailPost.post.id })}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.matteBlack },
+  feedArea: { flex: 1 },
   demoBanner: {
-    position: 'absolute', top: 96, alignSelf: 'center', zIndex: 10,
+    alignSelf: 'center',
+    marginBottom: Spacing.xs,
     backgroundColor: 'rgba(230, 57, 70, 0.9)', paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs, borderRadius: 20,
   },

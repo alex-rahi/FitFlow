@@ -34,11 +34,9 @@ export function CategoryTabs({ selected, onSelect }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 52,
-    left: 0,
-    right: 0,
-    zIndex: 10,
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingVertical: Spacing.sm,
   },
   row: {
     paddingHorizontal: Spacing.md,

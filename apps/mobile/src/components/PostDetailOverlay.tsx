@@ -1,25 +1,27 @@
 import { Modal, View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { VideoCard, VideoPost, FEED_ITEM_HEIGHT } from './VideoCard';
+import { VideoCard, VideoPost } from './VideoCard';
 import { Colors, Spacing } from '../constants/theme';
+import { BOTTOM_TAB_HEIGHT } from '../constants/layout';
 
 interface Props {
   post: VideoPost | null;
   index: number;
+  itemHeight: number;
   onClose: () => void;
   onLike: () => void;
   onComment: () => void;
 }
 
-export function PostDetailOverlay({ post, index, onClose, onLike, onComment }: Props) {
+export function PostDetailOverlay({ post, index, itemHeight, onClose, onLike, onComment }: Props) {
   return (
     <Modal visible={!!post} animationType="slide" transparent>
       <View style={styles.backdrop}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { height: itemHeight }]}>
           {post && (
             <VideoCard
               post={post}
               index={index}
-              height={FEED_ITEM_HEIGHT}
+              height={itemHeight}
               onLike={onLike}
               onComment={onComment}
             />
@@ -38,17 +40,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
-    paddingTop: 52,
-    paddingBottom: 84,
+    paddingBottom: BOTTOM_TAB_HEIGHT,
   },
   sheet: {
-    height: FEED_ITEM_HEIGHT,
     backgroundColor: Colors.matteBlack,
     overflow: 'hidden',
   },
   closeBtn: {
     position: 'absolute',
-    top: 52,
+    top: Spacing.md,
     right: Spacing.md,
     width: 36,
     height: 36,

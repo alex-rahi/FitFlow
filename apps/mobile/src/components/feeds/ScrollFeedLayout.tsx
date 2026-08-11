@@ -1,17 +1,18 @@
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
-import { VideoCard, VideoPost, FEED_ITEM_HEIGHT } from '../VideoCard';
+import { View, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { VideoCard, VideoPost } from '../VideoCard';
 import { Colors } from '../../constants/theme';
 
 interface Props {
   posts: VideoPost[];
   loading: boolean;
   hasMore: boolean;
+  itemHeight: number;
   onLoadMore: () => void;
   onLike: (postId: string) => void;
   onComment: (postId: string) => void;
 }
 
-export function ScrollFeedLayout({ posts, loading, hasMore, onLoadMore, onLike, onComment }: Props) {
+export function ScrollFeedLayout({ posts, loading, hasMore, itemHeight, onLoadMore, onLike, onComment }: Props) {
   if (loading && posts.length === 0) {
     return (
       <View style={styles.center}>
@@ -29,20 +30,20 @@ export function ScrollFeedLayout({ posts, loading, hasMore, onLoadMore, onLike, 
         <VideoCard
           post={item}
           index={index}
-          height={FEED_ITEM_HEIGHT}
+          height={itemHeight}
           onLike={() => onLike(item.id)}
           onComment={() => onComment(item.id)}
         />
       )}
       pagingEnabled
-      snapToInterval={FEED_ITEM_HEIGHT}
+      snapToInterval={itemHeight}
       snapToAlignment="start"
       decelerationRate="fast"
       disableIntervalMomentum
       showsVerticalScrollIndicator={false}
       getItemLayout={(_, index) => ({
-        length: FEED_ITEM_HEIGHT,
-        offset: FEED_ITEM_HEIGHT * index,
+        length: itemHeight,
+        offset: itemHeight * index,
         index,
       })}
       onEndReached={() => hasMore && onLoadMore()}
