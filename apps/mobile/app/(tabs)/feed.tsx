@@ -6,12 +6,13 @@ import { CategoryTabs } from '../../src/components/CategoryTabs';
 import { PostDetailOverlay } from '../../src/components/PostDetailOverlay';
 import { ScrollFeedLayout } from '../../src/components/feeds/ScrollFeedLayout';
 import { GridFeedLayout } from '../../src/components/feeds/GridFeedLayout';
-import { ColumnFeedLayout } from '../../src/components/feeds/ColumnFeedLayout';
 import { ThreadFeedLayout } from '../../src/components/feeds/ThreadFeedLayout';
 import { VideoPost } from '../../src/components/VideoCard';
 import { api } from '../../src/lib/api';
-import { FeedCategoryId, getCategoryLayout } from '../../src/constants/categories';
+import { FeedViewId, getFeedViewLayout } from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { analytics } from '../../src/lib/analytics';
+import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 interface CommentTarget {
   postId: string;
@@ -19,21 +20,44 @@ interface CommentTarget {
   replyToUsername?: string;
 }
 
+const EMPTY_COPY: Record<FeedViewId, { title: string; subtitle: string }> = {
+  feed: {
+    title: 'No videos here yet',
+    subtitle: USE_PLACEHOLDERS
+      ? 'Upload a PR or workout clip to populate the feed'
+      : 'Follow creators or upload your first workout video',
+  },
+  recipes: {
+    title: 'No recipes yet',
+    subtitle: USE_PLACEHOLDERS
+      ? 'Upload a meal prep or nutrition video to fill the grid'
+      : 'Share meal prep and nutrition content to get started',
+  },
+  community: {
+    title: 'No threads yet',
+    subtitle: USE_PLACEHOLDERS
+      ? 'Post advice or form-check videos to start a discussion'
+      : 'Ask questions and share coaching tips with the community',
+  },
+};
+
 export default function FeedScreen() {
+  useScreenAnalytics('feed');
   const [posts, setPosts] = useState<VideoPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<string | undefined>();
-  const [category, setCategory] = useState<FeedCategoryId>('main_feed');
+  const [view, setView] = useState<FeedViewId>('feed');
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
   const [detailPost, setDetailPost] = useState<{ post: VideoPost; index: number } | null>(null);
   const [threadRefresh, setThreadRefresh] = useState(0);
+  const [feedHeight, setFeedHeight] = useState(0);
 
-  const layout = getCategoryLayout(category);
+  const layout = getFeedViewLayout(view);
 
-  const loadFeed = useCallback(async (nextCursor?: string, feedCategory: FeedCategoryId = category) => {
+  const loadFeed = useCallback(async (nextCursor?: string, feedView: FeedViewId = view) => {
     if (!nextCursor) setLoading(true);
     try {
-      const data = await api.getFeed(nextCursor, feedCategory);
+      const data = await api.getFeedView(feedView, nextCursor);
       setPosts(prev => nextCursor ? [...prev, ...data.posts] : data.posts);
       setCursor(data.next_cursor ?? undefined);
     } catch {
@@ -41,22 +65,26 @@ export default function FeedScreen() {
     } finally {
       setLoading(false);
     }
-  }, [category]);
+  }, [view]);
 
   useEffect(() => {
     setPosts([]);
     setCursor(undefined);
     setDetailPost(null);
-    loadFeed(undefined, category);
-  }, [category, loadFeed]);
+    loadFeed(undefined, view);
+  }, [view, loadFeed]);
 
-  const handleCategoryChange = (id: FeedCategoryId) => {
-    if (id !== category) setCategory(id);
+  const handleViewChange = (id: FeedViewId) => {
+    if (id !== view) {
+      analytics.track('feed_view_change', { from: view, to: id });
+      setView(id);
+    }
   };
 
   const handleLike = async (postId: string) => {
     try {
       await api.likePost(postId);
+      analytics.track('like', { post_id: postId, feed_view: view });
       setPosts(prev => prev.map(p =>
         p.id === postId ? { ...p, like_count: p.like_count + 1 } : p
       ));
@@ -64,6 +92,7 @@ export default function FeedScreen() {
   };
 
   const handleOpenPost = (post: VideoPost, index: number) => {
+    analytics.track('video_open', { post_id: post.id, category: post.category, index, feed_view: view });
     setDetailPost({ post, index });
   };
 
@@ -78,6 +107,7 @@ export default function FeedScreen() {
   const handleCommentAdded = () => {
     setThreadRefresh(k => k + 1);
     if (commentTarget) {
+      analytics.track('comment', { post_id: commentTarget.postId, feed_view: view });
       setPosts(prev => prev.map(p =>
         p.id === commentTarget.postId ? { ...p, comment_count: p.comment_count + 1 } : p
       ));
@@ -94,15 +124,12 @@ export default function FeedScreen() {
     }
 
     if (posts.length === 0) {
+      const copy = EMPTY_COPY[view];
       return (
-        <SafeAreaView style={styles.center}>
-          <Text style={styles.emptyTitle}>No videos here yet</Text>
-          <Text style={styles.emptySubtitle}>
-            {USE_PLACEHOLDERS
-              ? 'Try another category or upload a video to this feed'
-              : 'Follow creators or upload your first workout video'}
-          </Text>
-        </SafeAreaView>
+        <View style={styles.center}>
+          <Text style={styles.emptyTitle}>{copy.title}</Text>
+          <Text style={styles.emptySubtitle}>{copy.subtitle}</Text>
+        </View>
       );
     }
 
@@ -110,14 +137,6 @@ export default function FeedScreen() {
       case 'grid':
         return (
           <GridFeedLayout
-            posts={posts}
-            onLike={handleLike}
-            onOpen={handleOpenPost}
-          />
-        );
-      case 'columns':
-        return (
-          <ColumnFeedLayout
             posts={posts}
             onLike={handleLike}
             onOpen={handleOpenPost}
@@ -140,7 +159,8 @@ export default function FeedScreen() {
             posts={posts}
             loading={loading}
             hasMore={!!cursor}
-            onLoadMore={() => cursor && loadFeed(cursor, category)}
+            itemHeight={feedHeight}
+            onLoadMore={() => cursor && loadFeed(cursor, view)}
             onLike={handleLike}
             onComment={(postId) => setCommentTarget({ postId })}
           />
@@ -149,14 +169,30 @@ export default function FeedScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <CategoryTabs selected={category} onSelect={handleCategoryChange} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <CategoryTabs selected={view} onSelect={handleViewChange} />
       {USE_PLACEHOLDERS && (
         <View style={styles.demoBanner}>
           <Text style={styles.demoBannerText}>Demo mode — using placeholder data</Text>
         </View>
       )}
-      {renderFeed()}
+      <View
+        style={styles.feedArea}
+        onLayout={(event) => {
+          const nextHeight = Math.floor(event.nativeEvent.layout.height);
+          if (nextHeight > 0 && nextHeight !== feedHeight) {
+            setFeedHeight(nextHeight);
+          }
+        }}
+      >
+        {layout === 'scroll' && feedHeight === 0 ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={Colors.red} size="large" />
+          </View>
+        ) : (
+          renderFeed()
+        )}
+      </View>
       <CommentSheet
         visible={!!commentTarget}
         postId={commentTarget?.postId ?? ''}
@@ -168,18 +204,21 @@ export default function FeedScreen() {
       <PostDetailOverlay
         post={detailPost?.post ?? null}
         index={detailPost?.index ?? 0}
+        itemHeight={feedHeight}
         onClose={() => setDetailPost(null)}
         onLike={() => detailPost && handleLike(detailPost.post.id)}
         onComment={() => detailPost && setCommentTarget({ postId: detailPost.post.id })}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.matteBlack },
+  feedArea: { flex: 1 },
   demoBanner: {
-    position: 'absolute', top: 96, alignSelf: 'center', zIndex: 10,
+    alignSelf: 'center',
+    marginBottom: Spacing.xs,
     backgroundColor: 'rgba(230, 57, 70, 0.9)', paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs, borderRadius: 20,
   },

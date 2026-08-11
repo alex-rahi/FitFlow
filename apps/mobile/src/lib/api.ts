@@ -1,4 +1,9 @@
-import { FeedCategoryId } from '../constants/categories';
+import {
+  ApiFeedCategory,
+  FeedViewId,
+  filterPostsForFeedView,
+  RECIPE_CATEGORIES,
+} from '../constants/categories';
 import {
   PLACEHOLDER_THREAD_COMMENTS,
   ThreadComment,
@@ -85,7 +90,7 @@ class ApiClient {
 
   getProfileById = (id: string) => this.request<any>(`/profiles/${id}`);
 
-  getFeed = async (cursor?: string, category: FeedCategoryId = 'main_feed') => {
+  getFeed = async (cursor?: string, category: ApiFeedCategory = 'main_feed') => {
     const categoryParam = category !== 'main_feed' ? `&category=${category}` : '';
     const cursorParam = cursor ? `cursor=${cursor}` : '';
     const query = [cursorParam, categoryParam.replace(/^&/, '')].filter(Boolean).join('&');
@@ -101,6 +106,32 @@ class ApiClient {
       }
       return { posts: [], next_cursor: null };
     }
+  };
+
+  getFeedView = async (view: FeedViewId, cursor?: string) => {
+    if (view === 'community') {
+      return this.getFeed(cursor, 'advice');
+    }
+
+    if (view === 'recipes') {
+      const pages = await Promise.all(
+        RECIPE_CATEGORIES.map((category) => this.getFeed(cursor, category)),
+      );
+      const posts = pages
+        .flatMap((page) => page.posts)
+        .sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+        );
+      const nextCursor = pages.find((page) => page.next_cursor)?.next_cursor ?? null;
+      return { posts, next_cursor: nextCursor };
+    }
+
+    const data = await this.getFeed(cursor, 'main_feed');
+    return {
+      posts: filterPostsForFeedView(data.posts, 'feed'),
+      next_cursor: data.next_cursor,
+    };
   };
 
   createPost = async (caption?: string, category: string = 'meal_prep') => {

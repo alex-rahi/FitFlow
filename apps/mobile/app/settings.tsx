@@ -1,13 +1,24 @@
 import { View, Text, StyleSheet, Switch, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../src/components/Button';
 import { useAuth } from '../src/context/AuthContext';
+import { analytics } from '../src/lib/analytics';
 import { Colors, Radius, Spacing, USE_PLACEHOLDERS } from '../src/constants/theme';
+import { useScreenAnalytics } from '../src/hooks/useScreenAnalytics';
 
 export default function SettingsScreen() {
+  useScreenAnalytics('settings');
   const router = useRouter();
   const { signOut, isPlaceholder } = useAuth();
+  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
+
+  useFocusEffect(
+    useCallback(() => {
+      setEventCounts(analytics.getEventCounts());
+    }, []),
+  );
 
   const handleSignOut = async () => {
     await signOut();
@@ -44,6 +55,20 @@ export default function SettingsScreen() {
         <SettingsSection title="Content">
           <SettingsRow label="Age Restriction" value="18+" />
           <SettingsRow label="Community Guidelines" onPress={() => {}} />
+        </SettingsSection>
+
+        <SettingsSection title="Analytics">
+          <SettingsRow label="Events captured (session)" value={String(analytics.getTotalEvents())} />
+          {Object.entries(eventCounts).slice(0, 6).map(([name, count]) => (
+            <SettingsRow key={name} label={name.replace(/_/g, ' ')} value={String(count)} />
+          ))}
+          {analytics.getTotalEvents() === 0 && (
+            <View style={styles.analyticsHint}>
+              <Text style={styles.analyticsHintText}>
+                Browse the feed, scroll videos, or upload to populate session analytics.
+              </Text>
+            </View>
+          )}
         </SettingsSection>
 
         <SettingsSection title="About">
@@ -112,5 +137,7 @@ const styles = StyleSheet.create({
   rowLabel: { color: Colors.textPrimary, fontSize: 16 },
   rowValue: { color: Colors.textMuted, fontSize: 14 },
   chevron: { color: Colors.textMuted, fontSize: 20 },
+  analyticsHint: { padding: Spacing.md },
+  analyticsHintText: { color: Colors.textMuted, fontSize: 13, lineHeight: 18 },
   actions: { marginTop: Spacing.lg },
 });

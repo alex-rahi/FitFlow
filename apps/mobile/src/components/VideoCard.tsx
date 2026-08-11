@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { createElement } from 'react';
 import { getCategoryLabel } from '../constants/categories';
 import { resolvePlaybackUrl } from '../lib/videoUrl';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const BOTTOM_TAB_HEIGHT = 84;
-export const FEED_ITEM_HEIGHT = SCREEN_HEIGHT - BOTTOM_TAB_HEIGHT;
 
 const PLACEHOLDER_GRADIENTS = ['#1a1a2e', '#16213e', '#0f3460', '#1a1a1a', '#2d1b2e'];
 
@@ -29,7 +25,7 @@ interface VideoCardProps {
   index: number;
   onLike: () => void;
   onComment?: () => void;
-  height?: number;
+  height: number;
 }
 
 function WebVideo({ uri }: { uri: string }) {
@@ -53,7 +49,7 @@ function WebVideo({ uri }: { uri: string }) {
   });
 }
 
-export function VideoCard({ post, index, onLike, onComment, height = FEED_ITEM_HEIGHT }: VideoCardProps) {
+export function VideoCard({ post, index, onLike, onComment, height }: VideoCardProps) {
   const categoryLabel = getCategoryLabel(post.category);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS);
@@ -125,8 +121,6 @@ export function VideoCard({ post, index, onLike, onComment, height = FEED_ITEM_H
   );
 }
 
-export { SCREEN_HEIGHT };
-
 const styles = StyleSheet.create({
   card: { backgroundColor: Colors.matteBlack },
   videoArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
@@ -135,7 +129,7 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
   categoryBadge: {
     position: 'absolute',
-    top: 100,
+    top: Spacing.md,
     left: Spacing.md,
     backgroundColor: 'rgba(230, 57, 70, 0.85)',
     paddingHorizontal: Spacing.sm,
@@ -143,11 +137,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   categoryText: { color: Colors.textPrimary, fontSize: 11, fontWeight: '700' },
-  sideActions: { position: 'absolute', right: Spacing.md, bottom: 120, gap: Spacing.lg },
+  sideActions: { position: 'absolute', right: Spacing.md, bottom: Spacing.xxl, gap: Spacing.lg },
   actionBtn: { alignItems: 'center' },
   actionIcon: { fontSize: 28, color: Colors.textPrimary },
   actionCount: { color: Colors.textPrimary, fontSize: 12, fontWeight: '600', marginTop: 2 },
-  bottomInfo: { padding: Spacing.lg, paddingBottom: 100 },
+  bottomInfo: { padding: Spacing.lg, paddingBottom: Spacing.xl },
   username: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
   caption: { color: Colors.textSecondary, fontSize: 14, marginTop: Spacing.xs },
 });

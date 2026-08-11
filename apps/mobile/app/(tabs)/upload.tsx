@@ -10,6 +10,8 @@ import { api } from '../../src/lib/api';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
 import { UploadCategoryId } from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { analytics } from '../../src/lib/analytics';
+import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 function notify(title: string, message: string) {
   if (Platform.OS === 'web') {
@@ -20,6 +22,7 @@ function notify(title: string, message: string) {
 }
 
 export default function UploadScreen() {
+  useScreenAnalytics('upload');
   const { session } = useAuth();
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState<UploadCategoryId>('meal_prep');
@@ -80,6 +83,8 @@ export default function UploadScreen() {
 
       setStatus('Confirming upload...');
       await api.confirmUpload(post.id);
+
+      analytics.track('upload_complete', { post_id: post.id, category });
 
       const successMessage = USE_PLACEHOLDERS
         ? 'Demo upload complete. In production, your video would enter the AI moderation pipeline.'

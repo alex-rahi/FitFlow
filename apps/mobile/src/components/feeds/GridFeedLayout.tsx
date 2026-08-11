@@ -1,5 +1,9 @@
+import { useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { VideoPost } from '../VideoCard';
+import { AdPlaceholder } from '../AdPlaceholder';
+import { PLACEHOLDER_ADS } from '../../constants/ads';
+import { analytics } from '../../lib/analytics';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -20,6 +24,9 @@ function formatCount(n: number) {
 }
 
 export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
+  const headerAd = PLACEHOLDER_ADS[0];
+  const adSeen = useRef(false);
+
   return (
     <FlatList
       data={posts}
@@ -28,6 +35,20 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
       contentContainerStyle={styles.list}
       columnWrapperStyle={styles.row}
       showsVerticalScrollIndicator={false}
+      ListHeaderComponent={
+        <AdPlaceholder
+          ad={headerAd}
+          variant="banner"
+          onPress={() => {
+            analytics.track('ad_click', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'recipes_grid' });
+          }}
+        />
+      }
+      onLayout={() => {
+        if (adSeen.current) return;
+        adSeen.current = true;
+        analytics.track('ad_impression', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'recipes_grid' });
+      }}
       renderItem={({ item, index }) => (
         <TouchableOpacity
           style={styles.card}
@@ -53,7 +74,7 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: Spacing.md, paddingTop: 100, paddingBottom: 120 },
+  list: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xl },
   row: { gap: CARD_GAP, marginBottom: CARD_GAP },
   card: {
     width: CARD_WIDTH,
