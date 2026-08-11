@@ -11,6 +11,7 @@ import {
 } from '../constants/threadComments';
 import {
   PLACEHOLDER_POSTS,
+  PLACEHOLDER_RECIPE_PHOTOS,
   PLACEHOLDER_PROFILE,
   PLACEHOLDER_USERS,
   PLACEHOLDER_NOTIFICATIONS,
@@ -19,6 +20,7 @@ import {
 } from '../constants/theme';
 import { rankPostsByEngagement } from './feedRanking';
 import { createPlaceholderSession, delay } from './placeholders';
+import { MediaType } from '../constants/categories';
 import { supabase } from './supabase';
 import { API_URL } from '../constants/theme';
 
@@ -116,17 +118,18 @@ class ApiClient {
     }
 
     if (view === 'recipes') {
+      if (USE_PLACEHOLDERS) {
+        await delay(200);
+        const posts = [...PLACEHOLDER_RECIPE_PHOTOS, ...uploadedRecipePhotos];
+        return { posts: filterPostsForFeedView(posts, 'recipes'), next_cursor: null };
+      }
       const pages = await Promise.all(
         RECIPE_CATEGORIES.map((category) => this.getFeed(cursor, category)),
       );
       const posts = pages
         .flatMap((page) => page.posts)
-        .sort(
-          (a, b) =>
-            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
-        );
-      const nextCursor = pages.find((page) => page.next_cursor)?.next_cursor ?? null;
-      return { posts, next_cursor: nextCursor };
+        .filter((post: { media_type?: string }) => post.media_type === 'photo');
+      return { posts, next_cursor: pages.find((page) => page.next_cursor)?.next_cursor ?? null };
     }
 
     const data = await this.getFeed(cursor, 'main_feed');
@@ -136,15 +139,31 @@ class ApiClient {
     };
   };
 
-  createPost = async (caption?: string, category: string = 'prs') => {
+  createPost = async (
+    caption?: string,
+    category: string = 'prs',
+    mediaType: MediaType = 'video',
+    photoUri?: string | null,
+  ) => {
     if (USE_PLACEHOLDERS) {
       await delay(500);
-      return {
+      const post = {
         id: `post-${Date.now()}`,
         caption,
         category,
-        status: 'processing',
+        media_type: mediaType,
+        photo_uri: photoUri ?? null,
+        status: mediaType === 'photo' ? 'published' : 'processing',
+        like_count: 0,
+        comment_count: 0,
+        view_count: 0,
+        created_at: new Date().toISOString(),
+        author: { username: 'you', display_name: 'You' },
       };
+      if (mediaType === 'photo') {
+        uploadedRecipePhotos.unshift(post);
+      }
+      return post;
     }
     const token = await this.getToken();
     if (!token) {
@@ -161,7 +180,8 @@ class ApiClient {
     } catch {
       if (USE_PLACEHOLDERS) {
         await delay(200);
-        return PLACEHOLDER_POSTS.filter(
+        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_RECIPE_PHOTOS, ...uploadedRecipePhotos];
+        return all.filter(
           (post) => post.user_id === userId || userId === PLACEHOLDER_USER_ID,
         );
       }
@@ -173,7 +193,8 @@ class ApiClient {
     const q = query.toLowerCase();
     if (USE_PLACEHOLDERS) {
       await delay(200);
-      return filterPostsForFeedView(PLACEHOLDER_POSTS, view).filter((post) =>
+      const data = await this.getFeedView(view);
+      return data.posts.filter((post) =>
         (post.caption ?? '').toLowerCase().includes(q)
         || (post.author?.username ?? '').toLowerCase().includes(q),
       );
@@ -275,3 +296,5 @@ class ApiClient {
 
 export const api = new ApiClient();
 export { createPlaceholderSession };
+
+const uploadedRecipePhotos: Array<Record<string, unknown>> = [];
