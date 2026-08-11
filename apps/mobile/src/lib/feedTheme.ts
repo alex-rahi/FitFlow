@@ -44,6 +44,13 @@ const LANE_THEMES: Record<FeedLaneId, FeedTheme> = {
     ambientA: 'rgba(244,196,48,0.15)',
     ambientB: 'rgba(60,50,10,0.38)',
   },
+  advice: {
+    accent: '#38BDF8',
+    accentSoft: 'rgba(56,189,248,0.3)',
+    glow: 'rgba(56,189,248,0.18)',
+    ambientA: 'rgba(56,189,248,0.14)',
+    ambientB: 'rgba(10,40,70,0.4)',
+  },
   form: {
     accent: '#A855F7',
     accentSoft: 'rgba(168,85,247,0.32)',

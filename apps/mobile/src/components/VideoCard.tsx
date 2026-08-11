@@ -246,7 +246,7 @@ export function VideoCard({
           <View style={styles.metaRow}>
             <View style={[styles.categoryPill, { backgroundColor: accentSoft, borderColor: accentBorder }]}>
               <Text style={[styles.categoryText, { color: accent }]}>
-                {isPhoto ? 'Photo' : 'Video'} · {(post.category ?? 'fitness').replace('_', ' ')}
+                Video · {(post.category ?? 'fitness').replace('_', ' ')}
               </Text>
             </View>
           </View>
