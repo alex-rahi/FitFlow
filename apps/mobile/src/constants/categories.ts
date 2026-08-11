@@ -40,6 +40,13 @@ export const FEED_LANES: { id: FeedLaneId; label: string }[] = [
 
 export const PHOTO_CATEGORIES: PostCategoryId[] = ['workouts', 'equipment', 'nutrition', 'prs'];
 
+export const PHOTO_UPLOAD_DISCLAIMER = {
+  title: 'Before you post',
+  body:
+    'Progress photos are scanned by our YOLO moderation pipeline. Only post gym-related content you own or have permission to share. No nudity, harassment, or unrelated imagery — violations are auto-rejected.',
+  checkbox: 'I understand and agree to these guidelines',
+};
+
 export function isEquipmentPost(post: {
   category?: string | null;
   topics?: string[] | null;

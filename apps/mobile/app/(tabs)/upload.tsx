@@ -19,6 +19,8 @@ import {
   getCategoryLabel,
   getUploadDestinationForCategory,
   MediaType,
+  PHOTO_CATEGORIES,
+  PHOTO_UPLOAD_DISCLAIMER,
   PostCategoryId,
 } from '../../src/constants/categories';
 import { Colors, Radius, Spacing, isDemoMode, isLocalYoloMode } from '../../src/constants/theme';
@@ -45,11 +47,22 @@ export default function UploadScreen() {
   const [category, setCategory] = useState<PostCategoryId>('workouts');
   const [mediaType, setMediaType] = useState<MediaType>('video');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [photoDisclaimerAccepted, setPhotoDisclaimerAccepted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
   const isText = mediaType === 'text';
+  const isPhoto = mediaType === 'photo';
+
+  const selectMediaType = (type: MediaType) => {
+    setMediaType(type);
+    setMediaUri(null);
+    setPhotoDisclaimerAccepted(false);
+    if (type === 'photo' && category === 'advice') {
+      setCategory(PHOTO_CATEGORIES[0]);
+    }
+  };
 
   const pickMedia = async () => {
     if (isText) return;
@@ -67,6 +80,10 @@ export default function UploadScreen() {
     }
     if (isText && !caption.trim()) {
       notify('Empty', 'Write something first.');
+      return;
+    }
+    if (isPhoto && !photoDisclaimerAccepted) {
+      notify('Disclaimer required', 'Accept the photo guidelines before publishing.');
       return;
     }
     if (!isDemoMode() && !isLocalYoloMode() && !session) {
@@ -111,6 +128,7 @@ export default function UploadScreen() {
       notify('Published', 'Live in feed.');
       setCaption('');
       setMediaUri(null);
+      setPhotoDisclaimerAccepted(false);
       setStatus('');
     } catch (err: any) {
       setError(err?.message ?? 'Upload failed');
@@ -128,29 +146,63 @@ export default function UploadScreen() {
             <TouchableOpacity
               key={t.id}
               style={[styles.chip, mediaType === t.id && styles.chipActive]}
-              onPress={() => { setMediaType(t.id); setMediaUri(null); }}
+              onPress={() => selectMediaType(t.id)}
             >
               <Text style={[styles.chipText, mediaType === t.id && styles.chipTextActive]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.catRow}>
-          {UPLOAD_CATEGORIES.map((cat) => (
+        {isPhoto ? (
+          <View style={styles.photoForm}>
+            <Text style={styles.formTitle}>Progress photo</Text>
+            <Text style={styles.formHint}>Choose a category for the Photos grid.</Text>
+            <View style={styles.catRow}>
+              {PHOTO_CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.chipSm, category === cat && styles.chipActive]}
+                  onPress={() => setCategory(cat)}
+                >
+                  <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
+                    {getCategoryLabel(cat)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.disclaimerBox}>
+              <Text style={styles.disclaimerTitle}>{PHOTO_UPLOAD_DISCLAIMER.title}</Text>
+              <Text style={styles.disclaimerBody}>{PHOTO_UPLOAD_DISCLAIMER.body}</Text>
+            </View>
             <TouchableOpacity
-              key={cat}
-              style={[styles.chipSm, category === cat && styles.chipActive]}
-              onPress={() => setCategory(cat)}
+              style={styles.checkboxRow}
+              onPress={() => setPhotoDisclaimerAccepted((v) => !v)}
+              disabled={uploading}
             >
-              <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
-                {getCategoryLabel(cat)}
-              </Text>
+              <View style={[styles.checkbox, photoDisclaimerAccepted && styles.checkboxChecked]}>
+                {photoDisclaimerAccepted ? <Text style={styles.checkmark}>✓</Text> : null}
+              </View>
+              <Text style={styles.checkboxLabel}>{PHOTO_UPLOAD_DISCLAIMER.checkbox}</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+        ) : (
+          <View style={styles.catRow}>
+            {UPLOAD_CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.chipSm, category === cat && styles.chipActive]}
+                onPress={() => setCategory(cat)}
+              >
+                <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
+                  {getCategoryLabel(cat)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <Input
-          placeholder={isText ? 'Ask the community...' : 'Caption'}
+          placeholder={isText ? 'Ask the community...' : isPhoto ? 'Caption (optional)' : 'Caption'}
           value={caption}
           onChangeText={setCaption}
           multiline
@@ -199,6 +251,33 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: Colors.red, backgroundColor: 'rgba(230,57,70,0.1)' },
   chipText: { color: Colors.textMuted, fontSize: 13, fontWeight: '600' },
   chipTextActive: { color: Colors.red },
+  photoForm: { gap: Spacing.sm },
+  formTitle: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  formHint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.xs },
+  disclaimerBox: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
+  disclaimerTitle: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  disclaimerBody: { color: Colors.textMuted, fontSize: 12, lineHeight: 18 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginTop: Spacing.xs },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: { borderColor: Colors.red, backgroundColor: 'rgba(230,57,70,0.15)' },
+  checkmark: { color: Colors.red, fontSize: 13, fontWeight: '700' },
+  checkboxLabel: { flex: 1, color: Colors.textSecondary, fontSize: 13, lineHeight: 18 },
   publish: { marginTop: Spacing.sm },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   status: { color: Colors.textMuted, fontSize: 13 },
