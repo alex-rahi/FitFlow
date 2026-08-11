@@ -403,8 +403,8 @@ export function FourWayFeed({
   });
 
   const ambientStyle = Platform.OS === 'web'
-    ? webAmbientStyle(theme, pointer)
-    : { backgroundColor: '#030303' };
+    ? { ...webAmbientStyle(theme, pointer), backgroundColor: '#000' }
+    : { backgroundColor: '#000' };
 
   const orbAX = mixPointer(25, pointer.x, 30);
   const orbAY = mixPointer(20, pointer.y, 25);
@@ -510,6 +510,7 @@ export function FourWayFeed({
         laneIdx={laneIndex}
         itemIdx={itemIndex}
         itemCount={laneItems.length}
+        laneLabel={laneData.label}
         prevItem={pItem}
         nextItem={nItem}
         prevLaneItem={laneItemAt(lanes, laneIndex - 1, itemIndex)}
@@ -649,7 +650,7 @@ export function FourWayFeed({
 }
 
 const styles = StyleSheet.create({
-  container: { overflow: 'hidden' },
+  container: { overflow: 'hidden', backgroundColor: '#000' },
   fluidStage: { flex: 1, overflow: 'hidden' },
   content: { flex: 1 },
   laneGhost: {

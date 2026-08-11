@@ -1,19 +1,11 @@
 import { ReactNode } from 'react';
 import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { FeedLaneId } from '../../constants/categories';
-import { FeedTheme, getLaneTheme, withAlpha } from '../../lib/feedTheme';
+import { FeedTheme, withAlpha } from '../../lib/feedTheme';
 import { ScrollFeedItem } from '../../lib/feedItems';
 import { PeekPreview } from './PeekPreview';
-import { Spacing } from '../../constants/theme';
-
-const LANE_SHORT: Record<FeedLaneId, string> = {
-  main_feed: 'FY',
-  workouts: 'WO',
-  nutrition: 'NU',
-  prs: 'PR',
-  photos: 'PH',
-  community: 'TK',
-};
+import { WatchCaseChrome } from './WatchCaseChrome';
+import { WatchLaneDock } from './WatchLaneDock';
 
 interface LaneInfo {
   id: FeedLaneId;
@@ -28,6 +20,7 @@ interface Props {
   laneIdx: number;
   itemIdx: number;
   itemCount: number;
+  laneLabel: string;
   prevItem: ScrollFeedItem | null;
   nextItem: ScrollFeedItem | null;
   prevLaneItem: ScrollFeedItem | null;
@@ -46,13 +39,14 @@ interface Props {
 }
 
 export function getWatchScreenSize(width: number, height: number) {
-  const frameW = Math.min(width * 0.9, 420);
-  const screenH = height * 0.68;
-  const screenW = frameW * 0.92;
-  return { screenH, screenW, frameW };
+  const caseW = Math.min(width * 0.82, 380);
+  const caseH = height * 0.78;
+  const screenW = caseW * 0.9;
+  const screenH = caseH * 0.62;
+  return { screenH, screenW, caseW, caseH, frameW: caseW };
 }
 
-/** Watch-inspired focus frame: squircle center, edge peeks, circular lane bubbles. */
+/** watchOS-style feed shell: case chrome, arc dock, complications, fluid peeks. */
 export function WatchFocusFrame({
   width,
   height,
@@ -61,6 +55,7 @@ export function WatchFocusFrame({
   laneIdx,
   itemIdx,
   itemCount,
+  laneLabel,
   prevItem,
   nextItem,
   prevLaneItem,
@@ -77,157 +72,160 @@ export function WatchFocusFrame({
   pageH = 1,
   children,
 }: Props) {
-  const { screenH, screenW, frameW } = getWatchScreenSize(width, height);
+  const { screenH, screenW, caseW, caseH } = getWatchScreenSize(width, height);
+  const timeStr = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
   const nextPeekScale = dragOffsetY?.interpolate({
     inputRange: [-pageH, 0],
-    outputRange: [1.12, 1],
+    outputRange: [1.14, 0.92],
     extrapolate: 'clamp',
   });
   const prevPeekScale = dragOffsetY?.interpolate({
     inputRange: [0, pageH],
-    outputRange: [1, 1.12],
+    outputRange: [0.92, 1.14],
     extrapolate: 'clamp',
   });
   const nextLanePeekScale = dragOffsetX?.interpolate({
     inputRange: [-pageW, 0],
-    outputRange: [1.1, 1],
+    outputRange: [1.12, 0.9],
     extrapolate: 'clamp',
   });
   const prevLanePeekScale = dragOffsetX?.interpolate({
     inputRange: [0, pageW],
-    outputRange: [1, 1.1],
+    outputRange: [0.9, 1.12],
+    extrapolate: 'clamp',
+  });
+
+  const screenScale = dragOffsetY?.interpolate({
+    inputRange: [-pageH, 0, pageH],
+    outputRange: [0.97, 1, 0.97],
     extrapolate: 'clamp',
   });
 
   return (
     <View style={[styles.chassis, { height, width }]}>
-      <View style={[styles.bezelRing, { width: frameW + 16, height: screenH + 80 }]}>
-        <View style={[styles.bezelInner, { borderColor: withAlpha(theme.accent, 0.2) }]}>
-          <Animated.View style={[styles.bubbleRow, { opacity: hudOpacity }]}>
-            {lanes.map((lane, i) => {
-              const lt = i === laneIdx;
-              const laneTheme = getLaneTheme(lane.id);
-              const accent = laneTheme.accent;
-              const scale = lt ? 1.15 : Math.abs(i - laneIdx) === 1 ? 0.92 : 0.78;
-              const opacity = lt ? 1 : Math.abs(i - laneIdx) === 1 ? 0.55 : 0.28;
-              return (
-                <View
-                  key={lane.id}
-                  style={[
-                    styles.bubble,
-                    {
-                      transform: [{ scale }],
-                      opacity,
-                      borderColor: lt ? accent : 'rgba(255,255,255,0.12)',
-                      backgroundColor: lt ? laneTheme.accentSoft : 'rgba(255,255,255,0.05)',
-                    },
-                  ]}
-                >
-                  <Text style={[styles.bubbleText, lt && { color: accent }]}>
-                    {LANE_SHORT[lane.id]}
-                  </Text>
-                </View>
-              );
-            })}
-          </Animated.View>
-
-          {topInterests.length > 0 ? (
-            <Animated.View style={[styles.interestRow, { opacity: hudOpacity }]}>
-              {topInterests.map((interest) => (
-                <View
-                  key={interest.topic}
-                  style={[styles.interestChip, { borderColor: withAlpha(theme.accent, 0.35) }]}
-                >
-                  <Text style={[styles.interestChipText, { color: theme.accent }]}>{interest.label}</Text>
-                </View>
-              ))}
-            </Animated.View>
-          ) : null}
-
-          <Animated.View style={[styles.peekTop, dragOffsetY && nextPeekScale ? { transform: [{ scaleY: nextPeekScale }] } : null]}>
-            {nextItem ? (
-              <PeekPreview item={nextItem} theme={theme} variant="vertical" />
-            ) : (
-              <View style={styles.peekSpacer} />
-            )}
-          </Animated.View>
-
-          <View style={[styles.focusRow, { height: screenH }]}>
-            <Animated.View style={[styles.peekSide, dragOffsetX && prevLanePeekScale ? { transform: [{ scale: prevLanePeekScale }] } : null]}>
-              {prevLaneTheme ? (
-                <PeekPreview
-                  item={prevLaneItem}
-                  theme={prevLaneTheme}
-                  variant="horizontal"
-                  label={prevLaneLabel?.slice(0, 2)}
-                />
+      <View style={[styles.caseOuter, { width: caseW + 28, height: caseH + 20 }]}>
+        <View style={[styles.caseBody, { width: caseW, height: caseH, borderRadius: caseW * 0.19 }]}>
+          <WatchCaseChrome theme={theme} caseW={caseW} caseH={caseH} />
+          <View style={[styles.caseBezel, { borderRadius: caseW * 0.17 }]}>
+            <Animated.View style={[styles.complicationRow, { opacity: hudOpacity }]}>
+              <Text style={styles.complicationTime}>{timeStr}</Text>
+              <View style={styles.complicationCenter}>
+                <Text style={[styles.complicationLane, { color: theme.accent }]}>{laneLabel}</Text>
+                <Text style={styles.complicationIndex}>
+                  {itemCount > 0 ? `${itemIdx + 1}/${itemCount}` : '—'}
+                </Text>
+              </View>
+              {topInterests[0] ? (
+                <Text style={[styles.complicationInterest, { color: theme.accent }]}>
+                  {topInterests[0].label}
+                </Text>
               ) : (
-                <View style={styles.peekSideSpacer} />
+                <Text style={styles.complicationBrand}>GymTok</Text>
               )}
             </Animated.View>
 
-            <View
+            <WatchLaneDock lanes={lanes} laneIdx={laneIdx} hudOpacity={hudOpacity} />
+
+            <Animated.View
               style={[
-                styles.screen,
-                {
-                  width: screenW,
-                  height: screenH,
-                  borderColor: withAlpha(theme.accent, 0.33),
-                  shadowColor: theme.accent,
-                },
+                styles.peekTop,
+                dragOffsetY && nextPeekScale ? { transform: [{ scale: nextPeekScale }] } : null,
               ]}
             >
-              <View style={[styles.screenInner, { borderColor: 'rgba(255,255,255,0.08)' }]}>
-                {children}
-              </View>
-              <View style={styles.pageDots}>
-                {Array.from({ length: Math.min(itemCount, 8) }).map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.dot,
-                      i === Math.min(itemIdx, 7) && { backgroundColor: theme.accent, width: 14 },
-                    ]}
+              {nextItem ? (
+                <PeekPreview item={nextItem} theme={theme} variant="vertical" />
+              ) : (
+                <View style={styles.peekSpacer} />
+              )}
+            </Animated.View>
+
+            <View style={[styles.focusRow, { height: screenH }]}>
+              <Animated.View
+                style={[
+                  styles.peekSide,
+                  dragOffsetX && prevLanePeekScale ? { transform: [{ scale: prevLanePeekScale }] } : null,
+                ]}
+              >
+                {prevLaneTheme ? (
+                  <PeekPreview
+                    item={prevLaneItem}
+                    theme={prevLaneTheme}
+                    variant="horizontal"
+                    label={prevLaneLabel?.slice(0, 2)}
                   />
-                ))}
-              </View>
+                ) : (
+                  <View style={styles.peekSideSpacer} />
+                )}
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.screen,
+                  {
+                    width: screenW,
+                    height: screenH,
+                    borderRadius: screenW * 0.11,
+                    borderColor: withAlpha(theme.accent, 0.28),
+                    shadowColor: theme.accent,
+                    transform: dragOffsetY && screenScale ? [{ scale: screenScale }] : [],
+                  },
+                ]}
+              >
+                <View style={[styles.screenInner, { borderRadius: screenW * 0.1 }]}>
+                  {children}
+                </View>
+                <View style={styles.pageDots}>
+                  {Array.from({ length: Math.min(itemCount, 9) }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        i === Math.min(itemIdx, 8) && {
+                          backgroundColor: theme.accent,
+                          width: 16,
+                          height: 5,
+                          borderRadius: 3,
+                        },
+                      ]}
+                    />
+                  ))}
+                </View>
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  styles.peekSide,
+                  dragOffsetX && nextLanePeekScale ? { transform: [{ scale: nextLanePeekScale }] } : null,
+                ]}
+              >
+                {nextLaneTheme ? (
+                  <PeekPreview
+                    item={nextLaneItem}
+                    theme={nextLaneTheme}
+                    variant="horizontal"
+                    label={nextLaneLabel?.slice(0, 2)}
+                  />
+                ) : (
+                  <View style={styles.peekSideSpacer} />
+                )}
+              </Animated.View>
             </View>
 
-            <Animated.View style={[styles.peekSide, dragOffsetX && nextLanePeekScale ? { transform: [{ scale: nextLanePeekScale }] } : null]}>
-              {nextLaneTheme ? (
-                <PeekPreview
-                  item={nextLaneItem}
-                  theme={nextLaneTheme}
-                  variant="horizontal"
-                  label={nextLaneLabel?.slice(0, 2)}
-                />
+            <Animated.View
+              style={[
+                styles.peekBottom,
+                dragOffsetY && prevPeekScale ? { transform: [{ scale: prevPeekScale }] } : null,
+              ]}
+            >
+              {prevItem ? (
+                <PeekPreview item={prevItem} theme={theme} variant="vertical" />
               ) : (
-                <View style={styles.peekSideSpacer} />
+                <View style={styles.peekSpacer} />
               )}
             </Animated.View>
           </View>
-
-          <Animated.View style={[styles.peekBottom, dragOffsetY && prevPeekScale ? { transform: [{ scaleY: prevPeekScale }] } : null]}>
-            {prevItem ? (
-              <PeekPreview item={prevItem} theme={theme} variant="vertical" />
-            ) : (
-              <View style={styles.peekSpacer} />
-            )}
-          </Animated.View>
         </View>
-      </View>
-
-      <View style={styles.crownColumn} pointerEvents="none">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.crownDot,
-              i === 2 && { backgroundColor: theme.accent, opacity: 0.6 },
-            ]}
-          />
-        ))}
       </View>
     </View>
   );
@@ -237,125 +235,129 @@ const styles = StyleSheet.create({
   chassis: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0e0e10',
+    backgroundColor: '#000',
   },
-  bezelRing: {
-    borderRadius: 44,
-    backgroundColor: '#1a1a1e',
+  caseOuter: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
+    position: 'relative',
+  },
+  caseBody: {
+    backgroundColor: '#1c1c1e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    position: 'relative',
     ...(Platform.OS === 'web' ? {
       // @ts-expect-error web
-      boxShadow: '0 0 0 1px rgba(255,255,255,0.06), 0 24px 48px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)',
-    } : {}),
+      boxShadow: '0 0 0 1px rgba(255,255,255,0.05), 0 32px 64px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 16 },
+      shadowOpacity: 0.6,
+      shadowRadius: 24,
+      elevation: 16,
+    }),
   },
-  bezelInner: {
+  caseBezel: {
     flex: 1,
     width: '100%',
-    borderRadius: 38,
-    borderWidth: 1,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: 6,
+    backgroundColor: '#0a0a0a',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'space-between',
+    overflow: 'hidden',
   },
-  bubbleRow: {
+  complicationRow: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-  },
-  bubble: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 10,
+    paddingTop: 2,
+    paddingBottom: 0,
   },
-  bubbleText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 9,
+  complicationTime: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 13,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+    minWidth: 52,
+  },
+  complicationCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  complicationLane: {
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
-  interestRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    marginBottom: 2,
+  complicationIndex: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 1,
   },
-  interestChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  interestChipText: {
+  complicationInterest: {
     fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    minWidth: 52,
+    textAlign: 'right',
   },
-  peekTop: { width: '100%', paddingHorizontal: 4 },
-  peekBottom: { width: '100%', paddingHorizontal: 4 },
-  peekSpacer: { height: 40 },
+  complicationBrand: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    minWidth: 52,
+    textAlign: 'right',
+  },
+  peekTop: { width: '100%', paddingHorizontal: 6 },
+  peekBottom: { width: '100%', paddingHorizontal: 6 },
+  peekSpacer: { height: 36 },
   focusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   peekSide: {
-    width: 52,
+    width: 48,
     height: '100%',
     justifyContent: 'center',
   },
-  peekSideSpacer: { width: 52 },
+  peekSideSpacer: { width: 48 },
   screen: {
-    borderRadius: 32,
     overflow: 'hidden',
-    borderWidth: 2,
+    borderWidth: 1.5,
     backgroundColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    elevation: 10,
   },
   screenInner: {
     flex: 1,
-    borderRadius: 30,
     overflow: 'hidden',
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   pageDots: {
     position: 'absolute',
-    bottom: 8,
+    bottom: 6,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 4,
   },
   dot: {
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  crownColumn: {
-    position: 'absolute',
-    right: 8,
-    top: '38%',
-    gap: 6,
-    opacity: 0.35,
-  },
-  crownDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
 });
