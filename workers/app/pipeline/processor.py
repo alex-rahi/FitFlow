@@ -14,6 +14,7 @@ from app.pipeline.frame_extractor import extract_frames, generate_thumbnail, get
 from app.pipeline.moderation import aggregate_moderation_scores, moderate_frame
 from app.pipeline.yolo_detector import detect_objects
 from app.rules.engine import EvaluationContext, Outcome, evaluate_all_rules
+from app.rules.outcomes import needs_human_review, post_status_for_outcome, review_priority
 
 logger = logging.getLogger(__name__)
 
@@ -131,15 +132,14 @@ async def process_job(pool: asyncpg.Pool, job: dict):
                 json.dumps(rr.details),
             )
 
-        status_map = {
-            Outcome.PUBLISH: "published",
-            Outcome.APPROVE: "published",
-            Outcome.REJECT: "rejected",
-            Outcome.AGE_RESTRICT: "age_restricted",
-            Outcome.FLAG_FOR_REVIEW: "published",
-            Outcome.MANUAL_REVIEW: "published",
-        }
-        post_status = status_map.get(final_outcome, "published")
+        post_status = post_status_for_outcome(final_outcome)
+
+        if needs_human_review(final_outcome):
+            await pool.execute(
+                """INSERT INTO review_queue (post_id, priority, review_status)
+                   VALUES ($1, $2, 'pending')""",
+                post_id, review_priority(final_outcome),
+            )
 
         await pool.execute(
             """UPDATE posts SET status = $1, moderation_decision = $2 WHERE id = $3""",

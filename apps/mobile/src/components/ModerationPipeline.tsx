@@ -22,7 +22,7 @@ export function ModerationPipeline({ status, moderationDecision, compact = false
       <Text style={styles.title}>YOLO moderation pipeline</Text>
       {!compact && (
         <Text style={styles.subtitle}>
-          Uploads run through YOLO object detection and a rules engine, then auto-publish — no manual approval queue.
+          Free YOLO + local safety heuristics. Clear passes publish automatically; flagged posts wait for human approval in the admin queue.
         </Text>
       )}
       {YOLO_MODERATION_STEPS.map((step, index) => {

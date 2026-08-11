@@ -14,9 +14,10 @@ MODERATION_CATEGORIES = [
 
 def moderate_frame(frame: np.ndarray, threshold: float = 0.7) -> list[dict]:
     """
-    Score a frame for content moderation.
-    In production, this calls AWS Rekognition, Google Vision, or a custom model.
-    Returns list of {category, score} dicts.
+    Score a frame for content moderation (free tier).
+
+    Uses deterministic local heuristics — no paid API. Gray scores are
+    routed to human review by the rules engine; only high scores auto-reject.
     """
     # Mock implementation — replace with real moderation API
     scores = []

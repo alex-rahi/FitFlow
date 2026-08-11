@@ -50,7 +50,7 @@ async def analyze_upload(file: UploadFile = File(...)):
     labels = sorted({d["label"] for d in result.detections})
     return {
         "status": result.outcome,
-        "moderation_decision": "publish" if result.outcome == "published" else result.outcome,
+        "moderation_decision": result.moderation_decision,
         "detections": result.detections,
         "detection_labels": labels,
         "moderation_scores": result.moderation_scores,
@@ -75,7 +75,7 @@ async def analyze_local_path(storage_path: str):
     labels = sorted({d["label"] for d in result.detections})
     return {
         "status": result.outcome,
-        "moderation_decision": "publish" if result.outcome == "published" else result.outcome,
+        "moderation_decision": result.moderation_decision,
         "detections": result.detections,
         "detection_labels": labels,
         "moderation_scores": result.moderation_scores,
