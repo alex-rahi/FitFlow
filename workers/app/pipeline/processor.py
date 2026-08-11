@@ -130,13 +130,13 @@ async def process_job(pool: asyncpg.Pool, job: dict):
 
         status_map = {
             Outcome.PUBLISH: "published",
-            Outcome.APPROVE: "approved",
+            Outcome.APPROVE: "published",
             Outcome.REJECT: "rejected",
             Outcome.AGE_RESTRICT: "age_restricted",
-            Outcome.FLAG_FOR_REVIEW: "flagged",
-            Outcome.MANUAL_REVIEW: "pending_review",
+            Outcome.FLAG_FOR_REVIEW: "published",
+            Outcome.MANUAL_REVIEW: "published",
         }
-        post_status = status_map.get(final_outcome, "pending_review")
+        post_status = status_map.get(final_outcome, "published")
 
         await pool.execute(
             """UPDATE posts SET status = $1, moderation_decision = $2 WHERE id = $3""",
@@ -150,14 +150,6 @@ async def process_job(pool: asyncpg.Pool, job: dict):
             post_id, final_outcome.value,
             f"Auto-decided by rules engine: {final_outcome.value}",
         )
-
-        if final_outcome in (Outcome.FLAG_FOR_REVIEW, Outcome.MANUAL_REVIEW):
-            priority = 10 if final_outcome == Outcome.MANUAL_REVIEW else 5
-            await pool.execute(
-                """INSERT INTO review_queue (post_id, priority, review_status)
-                   VALUES ($1, $2, 'pending')""",
-                post_id, priority,
-            )
 
         await pool.execute(
             """INSERT INTO audit_log (action, resource_type, resource_id, details)

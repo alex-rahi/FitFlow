@@ -17,12 +17,12 @@ import {
   PLACEHOLDER_NOTIFICATIONS,
   PLACEHOLDER_USER_ID,
   USE_PLACEHOLDERS,
+  API_URL,
 } from '../constants/theme';
 import { rankPostsByEngagement } from './feedRanking';
 import { createPlaceholderSession, delay } from './placeholders';
 import { MediaType } from '../constants/categories';
 import { supabase } from './supabase';
-import { API_URL } from '../constants/theme';
 
 class ApiClient {
   private async getToken(): Promise<string | null> {
@@ -103,9 +103,10 @@ class ApiClient {
     } catch {
       if (USE_PLACEHOLDERS) {
         await delay(400);
-        const posts = category === 'main_feed'
-          ? PLACEHOLDER_POSTS
+        let posts = category === 'main_feed'
+          ? [...PLACEHOLDER_POSTS]
           : PLACEHOLDER_POSTS.filter((p) => p.category === category);
+        posts = mergePublishedUploads(posts, category === 'main_feed' ? 'feed' : category === 'advice' ? 'community' : 'recipes');
         return { posts, next_cursor: null };
       }
       return { posts: [], next_cursor: null };
@@ -120,7 +121,7 @@ class ApiClient {
     if (view === 'recipes') {
       if (USE_PLACEHOLDERS) {
         await delay(200);
-        const posts = [...PLACEHOLDER_RECIPE_PHOTOS, ...uploadedRecipePhotos];
+        const posts = mergePublishedUploads([...PLACEHOLDER_RECIPE_PHOTOS], 'recipes');
         return { posts: filterPostsForFeedView(posts, 'recipes'), next_cursor: null };
       }
       const pages = await Promise.all(
@@ -146,23 +147,23 @@ class ApiClient {
     photoUri?: string | null,
   ) => {
     if (USE_PLACEHOLDERS) {
-      await delay(500);
+      await delay(300);
       const post = {
         id: `post-${Date.now()}`,
+        user_id: PLACEHOLDER_USER_ID,
         caption,
         category,
         media_type: mediaType,
         photo_uri: photoUri ?? null,
-        status: mediaType === 'photo' ? 'published' : 'processing',
+        status: 'processing',
+        moderation_decision: null,
         like_count: 0,
         comment_count: 0,
         view_count: 0,
         created_at: new Date().toISOString(),
         author: { username: 'you', display_name: 'You' },
       };
-      if (mediaType === 'photo') {
-        uploadedRecipePhotos.unshift(post);
-      }
+      uploadedPosts.unshift(post);
       return post;
     }
     const token = await this.getToken();
@@ -180,7 +181,7 @@ class ApiClient {
     } catch {
       if (USE_PLACEHOLDERS) {
         await delay(200);
-        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_RECIPE_PHOTOS, ...uploadedRecipePhotos];
+        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_RECIPE_PHOTOS, ...uploadedPosts.filter((p) => p.status === 'published')];
         return all.filter(
           (post) => post.user_id === userId || userId === PLACEHOLDER_USER_ID,
         );
@@ -224,10 +225,36 @@ class ApiClient {
 
   confirmUpload = async (postId: string) => {
     if (USE_PLACEHOLDERS) {
-      await delay(800);
-      return { id: postId, status: 'processing', moderation_decision: 'pending' };
+      await delay(400);
+      return { id: postId, status: 'processing', moderation_decision: null };
     }
     return this.request<any>(`/posts/${postId}/confirm-upload`, { method: 'POST' });
+  };
+
+  /** Runs YOLO moderation and auto-publishes on pass — no manual review queue. */
+  runYoloModeration = async (postId: string) => {
+    if (USE_PLACEHOLDERS) {
+      await delay(1200);
+      const post = uploadedPosts.find((p) => p.id === postId);
+      if (post) {
+        post.status = 'published';
+        post.moderation_decision = 'publish';
+      }
+      return { id: postId, status: 'published', moderation_decision: 'publish' };
+    }
+
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline) {
+      const post = await this.getPost(postId);
+      if (post.status === 'published') {
+        return post;
+      }
+      if (post.status === 'rejected') {
+        throw new Error('Post rejected by YOLO content moderation');
+      }
+      await delay(1500);
+    }
+    throw new Error('YOLO moderation timed out — check back shortly');
   };
 
   likePost = async (postId: string) => {
@@ -297,4 +324,12 @@ class ApiClient {
 export const api = new ApiClient();
 export { createPlaceholderSession };
 
-const uploadedRecipePhotos: Array<Record<string, unknown>> = [];
+const uploadedPosts: Array<Record<string, unknown>> = [];
+
+function mergePublishedUploads(posts: Array<Record<string, unknown>>, view: FeedViewId) {
+  const uploaded = filterPostsForFeedView(
+    uploadedPosts.filter((post) => post.status === 'published'),
+    view,
+  );
+  return [...uploaded, ...posts];
+}

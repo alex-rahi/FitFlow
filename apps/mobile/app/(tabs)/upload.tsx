@@ -89,6 +89,7 @@ export default function UploadScreen() {
 
     setUploading(true);
     setFeedback(null);
+    setModerationStatus(null);
     setStatus('Creating post...');
     try {
       const post = await api.createPost(
@@ -98,42 +99,39 @@ export default function UploadScreen() {
         isPhotoUpload ? mediaUri : null,
       );
 
-      if (isPhotoUpload) {
-        analytics.track('upload_complete', { post_id: post.id, category, feed_view: 'recipes', media_type: 'photo' });
-        const successMessage = USE_PLACEHOLDERS
-          ? 'Recipe photo added to the Recipes grid (demo mode).'
-          : 'Your recipe photo was uploaded and will appear in Recipes once approved.';
-        setFeedback({ type: 'success', message: successMessage });
-        notify('Success', successMessage);
-        setCaption('');
-        setMediaUri(null);
-        setStatus('');
-        return;
+      if (!isPhotoUpload) {
+        setStatus('Getting upload URL...');
+        const { storage_path } = await api.getUploadUrl(post.id);
+
+        setStatus('Uploading video...');
+        await uploadVideoFile(storage_path, mediaUri);
+
+        setStatus('Confirming upload...');
+        await api.confirmUpload(post.id);
       }
 
-      setStatus('Getting upload URL...');
-      const { storage_path } = await api.getUploadUrl(post.id);
-
-      setStatus('Uploading video...');
-      await uploadVideoFile(storage_path, mediaUri);
-
-      setStatus('Confirming upload...');
-      const confirmed = await api.confirmUpload(post.id);
-
-      analytics.track('upload_complete', { post_id: post.id, category, feed_view: destination });
+      setStatus('Running YOLO content moderation...');
+      setModerationStatus({ status: 'processing', decision: null });
+      const moderated = await api.runYoloModeration(post.id);
 
       setModerationStatus({
-        status: confirmed.status ?? 'processing',
-        decision: confirmed.moderation_decision,
+        status: moderated.status ?? 'published',
+        decision: moderated.moderation_decision ?? 'publish',
       });
 
-      const destLabel = getFeedViewLabel(destination);
-      const successMessage = USE_PLACEHOLDERS
-        ? `Demo upload complete. In production, your post would appear in ${destLabel} after YOLO moderation.`
-        : `Your video was uploaded and will appear in ${destLabel} once approved.`;
+      const destLabel = getFeedViewLabel(isPhotoUpload ? 'recipes' : destination);
+      analytics.track('upload_complete', {
+        post_id: post.id,
+        category,
+        feed_view: isPhotoUpload ? 'recipes' : destination,
+        media_type: uploadOption.mediaType,
+        moderation: 'yolo_auto_publish',
+      });
+
+      const successMessage = `Passed YOLO moderation — auto-published to ${destLabel}.`;
       setStatus('');
       setFeedback({ type: 'success', message: successMessage });
-      notify('Success', successMessage);
+      notify('Published', successMessage);
       setCaption('');
       setMediaUri(null);
     } catch (err: any) {
@@ -213,7 +211,7 @@ export default function UploadScreen() {
       {feedback ? (
         <View style={[styles.feedback, feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError]}>
           <Text style={styles.feedbackText}>{feedback.message}</Text>
-          {feedback.type === 'success' && !isPhotoUpload && moderationStatus && (
+          {feedback.type === 'success' && moderationStatus && (
             <ModerationPipeline
               status={moderationStatus.status}
               moderationDecision={moderationStatus.decision}
