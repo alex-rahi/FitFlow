@@ -5,10 +5,9 @@ import { Button } from '../../src/components/Button';
 import { APP_MONOGRAM, APP_NAME, APP_TAGLINE, Colors, Radius, Spacing } from '../../src/constants/theme';
 
 const FEATURES = [
-  { icon: '🥗', label: 'Recipes' },
-  { icon: '📹', label: 'Watch' },
-  { icon: '🍳', label: 'Kitchen' },
-  { icon: '📸', label: 'Share' },
+  { icon: '🥗', label: 'Browse' },
+  { icon: '📸', label: 'Upload' },
+  { icon: '👤', label: 'Profile' },
 ];
 
 export default function WelcomeScreen() {
