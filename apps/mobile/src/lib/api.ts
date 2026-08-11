@@ -17,6 +17,7 @@ import {
   PLACEHOLDER_USER_ID,
   USE_PLACEHOLDERS,
 } from '../constants/theme';
+import { rankPostsByEngagement } from './feedRanking';
 import { createPlaceholderSession, delay } from './placeholders';
 import { supabase } from './supabase';
 import { API_URL } from '../constants/theme';
@@ -130,7 +131,7 @@ class ApiClient {
 
     const data = await this.getFeed(cursor, 'main_feed');
     return {
-      posts: filterPostsForFeedView(data.posts, 'feed'),
+      posts: rankPostsByEngagement(filterPostsForFeedView(data.posts, 'feed')),
       next_cursor: data.next_cursor,
     };
   };

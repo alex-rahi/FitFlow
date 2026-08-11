@@ -17,6 +17,7 @@ import {
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
+import { ModerationPipeline } from '../../src/components/ModerationPipeline';
 
 function notify(title: string, message: string) {
   if (Platform.OS === 'web') {
@@ -36,6 +37,7 @@ export default function UploadScreen() {
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [moderationStatus, setModerationStatus] = useState<{ status: string; decision?: string | null } | null>(null);
 
   const uploadOption = getUploadOptionForView(view);
 
@@ -95,9 +97,14 @@ export default function UploadScreen() {
       await uploadVideoFile(storage_path, videoUri);
 
       setStatus('Confirming upload...');
-      await api.confirmUpload(post.id);
+      const confirmed = await api.confirmUpload(post.id);
 
       analytics.track('upload_complete', { post_id: post.id, category, feed_view: view });
+
+      setModerationStatus({
+        status: confirmed.status ?? 'processing',
+        decision: confirmed.moderation_decision,
+      });
 
       const destination = getFeedViewLabel(view);
       const successMessage = USE_PLACEHOLDERS
@@ -169,6 +176,13 @@ export default function UploadScreen() {
       {feedback ? (
         <View style={[styles.feedback, feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError]}>
           <Text style={styles.feedbackText}>{feedback.message}</Text>
+          {feedback.type === 'success' && moderationStatus && (
+            <ModerationPipeline
+              status={moderationStatus.status}
+              moderationDecision={moderationStatus.decision}
+              compact
+            />
+          )}
         </View>
       ) : null}
     </SafeAreaView>

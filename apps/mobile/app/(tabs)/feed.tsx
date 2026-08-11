@@ -171,6 +171,9 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <FeedViewTabs selected={view} onSelect={handleViewChange} />
+      {view === 'feed' && posts.length > 0 && (
+        <Text style={styles.rankHint}>Ranked by engagement, comments, and recency</Text>
+      )}
       {USE_PLACEHOLDERS && (
         <View style={styles.demoBanner}>
           <Text style={styles.demoBannerText}>Demo mode — using placeholder data</Text>
@@ -216,6 +219,13 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.matteBlack },
   feedArea: { flex: 1 },
+  rankHint: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textAlign: 'center',
+    marginBottom: Spacing.xs,
+    paddingHorizontal: Spacing.lg,
+  },
   demoBanner: {
     alignSelf: 'center',
     marginBottom: Spacing.xs,
