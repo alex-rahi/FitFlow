@@ -23,6 +23,10 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
       <View style={styles.grid}>
         {UPLOAD_VIEW_OPTIONS.map((option) => {
           const active = selectedDestination === option.destination;
+          const destLabel =
+            option.mediaType === 'photo' ? 'Recipe grid'
+            : option.mediaType === 'text' ? 'Kitchen thread'
+            : 'Watch scroll';
           return (
             <TouchableOpacity
               key={option.destination}
@@ -35,7 +39,7 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
                 {option.description}
               </Text>
               <Text style={[styles.destination, active && styles.destinationActive]}>
-                → {option.mediaType === 'photo' ? 'Photo grid' : option.mediaType === 'text' ? 'Text thread' : 'Main feed scroll'}
+                → {destLabel}
               </Text>
             </TouchableOpacity>
           );
@@ -46,14 +50,14 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
         <View style={styles.subPicker}>
           <Text style={styles.subLabel}>Recipe type</Text>
           <View style={styles.subRow}>
-            {RECIPE_SUBCATEGORIES.map((category) => {
-              const active = selectedCategory === category;
-              const label = category === 'meal_prep' ? 'Meal Prep' : 'Nutrition';
+            {RECIPE_SUBCATEGORIES.map((cat) => {
+              const active = selectedCategory === cat;
+              const label = cat === 'meal_prep' ? 'Meal Prep' : 'Nutrition';
               return (
                 <TouchableOpacity
-                  key={category}
+                  key={cat}
                   style={[styles.subChip, active && styles.subChipActive]}
-                  onPress={() => onSelect('recipes', category)}
+                  onPress={() => onSelect('recipes', cat)}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.subChipText, active && styles.subChipTextActive]}>{label}</Text>
@@ -66,10 +70,10 @@ export function UploadViewPicker({ selectedDestination, selectedCategory, onSele
 
       <Text style={styles.helper}>
         {activeOption.mediaType === 'photo'
-          ? 'Recipe photos are YOLO-scanned and auto-published to the Recipes grid.'
+          ? 'Recipe photos are scanned and auto-published to the grid.'
           : activeOption.mediaType === 'text'
-            ? 'Text threads are caption-moderated and auto-published to Community.'
-            : 'Feed videos are YOLO-moderated and auto-published to the main scroll.'}
+            ? 'Kitchen threads are moderated and auto-published.'
+            : 'Recipe videos are YOLO-moderated and auto-published to Watch.'}
       </Text>
     </View>
   );

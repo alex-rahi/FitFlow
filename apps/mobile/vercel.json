@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install && npx expo export -p web",
+  "buildCommand": "npm install && EXPO_PUBLIC_USE_PLACEHOLDERS=true EXPO_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co EXPO_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key npx expo export -p web",
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [{ "source": "/((?!.*\\.).*)", "destination": "/index.html" }]

@@ -25,7 +25,7 @@ import {
   getFeedViewLabel,
   getUploadOptionForDestination,
 } from '../../src/constants/categories';
-import { Colors, Radius, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { Colors, Radius, Spacing, isDemoMode } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
@@ -67,8 +67,8 @@ export default function UploadScreen() {
   useScreenAnalytics('upload');
   const { session } = useAuth();
   const [caption, setCaption] = useState('');
-  const [destination, setDestination] = useState<FeedViewId>('feed');
-  const [category, setCategory] = useState<PostCategoryId>('prs');
+  const [destination, setDestination] = useState<FeedViewId>('recipes');
+  const [category, setCategory] = useState<PostCategoryId>('meal_prep');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
@@ -126,7 +126,7 @@ export default function UploadScreen() {
       notify('No media', isRecipeUpload ? 'Please select a recipe photo first.' : 'Please select or record a video first.');
       return;
     }
-    if (!USE_PLACEHOLDERS && !session) {
+    if (!isDemoMode() && !session) {
       const message = 'You must log in with a real account before uploading.';
       setFeedback({ type: 'error', message });
       notify('Not signed in', message);
@@ -196,7 +196,7 @@ export default function UploadScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Upload</Text>
-        <Text style={styles.subtitle}>Feed videos, recipe photos, or community threads</Text>
+        <Text style={styles.subtitle}>Recipe photos, cooking videos, or kitchen threads</Text>
 
         <UploadViewPicker
           selectedDestination={destination}
@@ -211,7 +211,7 @@ export default function UploadScreen() {
             ) : (
               <View style={styles.feedPlaceholder}>
                 <Text style={styles.feedPlaceholderIcon}>▶</Text>
-                <Text style={styles.previewPlaceholder}>Full-screen feed video preview</Text>
+                <Text style={styles.previewPlaceholder}>Recipe video preview</Text>
               </View>
             )}
           </View>
@@ -259,7 +259,7 @@ export default function UploadScreen() {
           multiline
         />
 
-        {!USE_PLACEHOLDERS && !session && (
+        {!isDemoMode() && !session && (
           <Text style={styles.warning}>Log in with your Supabase account to upload.</Text>
         )}
 

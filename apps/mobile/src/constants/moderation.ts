@@ -5,11 +5,11 @@ export interface ModerationStep {
 }
 
 export const YOLO_MODERATION_STEPS: ModerationStep[] = [
-  { id: 'upload', label: 'Upload received', detail: 'Media stored in Supabase Storage' },
-  { id: 'frames', label: 'Frame / image analysis', detail: 'Keyframes or photo sampled for YOLO' },
-  { id: 'yolo', label: 'YOLO detection', detail: 'Person, equipment, food, and movement tags' },
+  { id: 'upload', label: 'Upload received', detail: 'Recipe media stored securely' },
+  { id: 'frames', label: 'Frame / image analysis', detail: 'Food and kitchen scenes sampled for review' },
+  { id: 'yolo', label: 'YOLO detection', detail: 'Ingredients, dishes, and prep steps tagged' },
   { id: 'moderation', label: 'Content moderation', detail: 'Safety scores evaluated by rules engine' },
-  { id: 'publish', label: 'Auto-publish', detail: 'Passed YOLO checks — live immediately, no manual review' },
+  { id: 'publish', label: 'Auto-publish', detail: 'Passed checks — live on Recipes, Watch, or Kitchen' },
 ];
 
 export type ModerationPhase = 'uploading' | 'processing' | 'published' | 'rejected';

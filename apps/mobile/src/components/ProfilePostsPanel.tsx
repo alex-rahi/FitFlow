@@ -21,9 +21,9 @@ export function ProfilePostsPanel({ posts, view, onOpen }: Props) {
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>No {getFeedViewLabel(view).toLowerCase()} posts yet</Text>
         <Text style={styles.emptySubtitle}>
-          {view === 'feed' && 'Upload a workout or PR to fill your feed.'}
+          {view === 'feed' && 'Upload a recipe video to Watch.'}
           {view === 'recipes' && 'Upload a recipe photo from the Upload tab.'}
-          {view === 'community' && 'Start a community thread or form-check post.'}
+          {view === 'community' && 'Start a kitchen thread from Upload.'}
         </Text>
       </View>
     );
@@ -85,7 +85,7 @@ export function ProfilePostsPanel({ posts, view, onOpen }: Props) {
             <Text style={styles.playIconSm}>▶</Text>
           </View>
           <View style={styles.feedBody}>
-            <Text style={styles.feedCaption} numberOfLines={2}>{post.caption ?? 'Workout clip'}</Text>
+            <Text style={styles.feedCaption} numberOfLines={2}>{post.caption ?? 'Recipe video'}</Text>
             <Text style={styles.feedMeta}>♥ {post.like_count} · 💬 {post.comment_count}</Text>
           </View>
         </TouchableOpacity>

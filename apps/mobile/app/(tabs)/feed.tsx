@@ -6,7 +6,7 @@ import { CommentSheet } from '../../src/components/CommentSheet';
 import { ScrollFeedLayout } from '../../src/components/feeds/ScrollFeedLayout';
 import { VideoPost } from '../../src/components/VideoCard';
 import { api } from '../../src/lib/api';
-import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { Colors, Spacing, isDemoMode } from '../../src/constants/theme';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 import { analytics } from '../../src/lib/analytics';
 
@@ -57,12 +57,12 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Feed</Text>
+        <Text style={styles.title}>Watch</Text>
         {posts.length > 0 && (
-          <Text style={styles.rankHint}>Workouts, PRs, and recipe videos — ranked for you</Text>
+          <Text style={styles.rankHint}>Recipe videos and cooking reels — ranked for you</Text>
         )}
       </View>
-      {USE_PLACEHOLDERS && (
+      {isDemoMode() && (
         <View style={styles.demoBanner}>
           <Text style={styles.demoBannerText}>Demo mode — using placeholder data</Text>
         </View>
@@ -80,8 +80,8 @@ export default function FeedScreen() {
           </View>
         ) : posts.length === 0 ? (
           <View style={styles.center}>
-            <Text style={styles.emptyTitle}>No videos here yet</Text>
-            <Text style={styles.emptySubtitle}>Upload a workout, PR, or recipe video to the Feed</Text>
+            <Text style={styles.emptyTitle}>No recipe videos yet</Text>
+            <Text style={styles.emptySubtitle}>Upload a recipe video from the Upload tab</Text>
           </View>
         ) : (
           <ScrollFeedLayout

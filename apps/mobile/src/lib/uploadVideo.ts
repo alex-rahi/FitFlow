@@ -1,11 +1,11 @@
 import { supabase } from './supabase';
 import { delay } from './placeholders';
-import { USE_PLACEHOLDERS } from '../constants/theme';
+import { isDemoMode } from '../constants/theme';
 
 const RAW_UPLOADS_BUCKET = 'raw-uploads';
 
 export async function uploadVideoFile(storagePath: string, videoUri: string): Promise<void> {
-  if (USE_PLACEHOLDERS) {
+  if (isDemoMode()) {
     await delay(600);
     return;
   }

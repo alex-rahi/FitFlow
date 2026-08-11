@@ -19,7 +19,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signIn(email, password);
-      router.replace('/(tabs)/feed');
+      router.replace('/(tabs)/recipes');
     } catch (err: any) {
       Alert.alert('Login Failed', err.message);
     } finally {

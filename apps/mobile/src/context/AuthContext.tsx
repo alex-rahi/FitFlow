@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
-import { USE_PLACEHOLDERS } from '../constants/theme';
+import { isDemoMode } from '../constants/theme';
 import { createPlaceholderSession } from '../lib/placeholders';
 import { supabase } from '../lib/supabase';
 
@@ -20,9 +20,11 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const demoMode = isDemoMode();
 
   useEffect(() => {
-    if (USE_PLACEHOLDERS) {
+    if (demoMode) {
+      setSession(createPlaceholderSession('demo@recipetok.app'));
       setLoading(false);
       return;
     }
@@ -37,10 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [demoMode]);
 
   const signUp = async (email: string, password: string, username: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (demoMode) {
       const s = createPlaceholderSession(email);
       s.user.user_metadata = { username, display_name: username };
       setSession(s);
@@ -56,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (demoMode) {
       setSession(createPlaceholderSession(email));
       return;
     }
@@ -65,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    if (USE_PLACEHOLDERS) {
+    if (demoMode) {
       setSession(null);
       return;
     }
@@ -73,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (demoMode) {
       await new Promise((r) => setTimeout(r, 800));
       return;
     }
@@ -84,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resendVerification = async (email: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (demoMode) {
       await new Promise((r) => setTimeout(r, 500));
       return;
     }
@@ -94,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      session, loading, isPlaceholder: USE_PLACEHOLDERS,
+      session, loading, isPlaceholder: demoMode,
       signUp, signIn, signOut, resetPassword, resendVerification,
     }}>
       {children}
