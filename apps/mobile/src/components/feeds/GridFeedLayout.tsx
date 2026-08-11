@@ -40,14 +40,14 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
           ad={headerAd}
           variant="banner"
           onPress={() => {
-            analytics.track('ad_click', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'recipes_grid' });
+            analytics.track('ad_click', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'photos_grid' });
           }}
         />
       }
       onLayout={() => {
         if (adSeen.current) return;
         adSeen.current = true;
-        analytics.track('ad_impression', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'recipes_grid' });
+        analytics.track('ad_impression', { ad_id: headerAd.id, brand: headerAd.brand, placement: 'photos_grid' });
       }}
       renderItem={({ item, index }) => (
         <TouchableOpacity

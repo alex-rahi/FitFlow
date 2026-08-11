@@ -22,11 +22,11 @@ export default function SignupScreen() {
     try {
       await signUp(email, password, username);
       if (USE_PLACEHOLDERS) {
-        router.replace('/(tabs)/recipes');
+        router.replace('/(tabs)/feed');
       } else {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
-          router.replace('/(tabs)/recipes');
+          router.replace('/(tabs)/feed');
         } else {
           router.replace('/(auth)/verify-email');
         }

@@ -2,18 +2,21 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '../../src/components/Input';
+import { FeedViewTabs } from '../../src/components/FeedViewTabs';
 import { api } from '../../src/lib/api';
+import { FeedViewId, getFeedViewLabel } from '../../src/constants/categories';
 import { VideoPost } from '../../src/components/VideoCard';
 import { Colors, Spacing } from '../../src/constants/theme';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 type SearchResult =
   | { type: 'user'; id: string; username: string; display_name?: string }
-  | { type: 'post'; id: string; post: VideoPost };
+  | { type: 'post'; id: string; post: VideoPost; view: FeedViewId };
 
 export default function SearchScreen() {
   useScreenAnalytics('search');
   const [query, setQuery] = useState('');
+  const [view, setView] = useState<FeedViewId>('feed');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +30,7 @@ export default function SearchScreen() {
     try {
       const [users, posts] = await Promise.all([
         api.searchProfiles(q),
-        api.searchPosts(q),
+        api.searchPosts(q, view),
       ]);
       const merged: SearchResult[] = [
         ...users.map((user: { id: string; username: string; display_name?: string }) => ({
@@ -40,6 +43,7 @@ export default function SearchScreen() {
           type: 'post' as const,
           id: post.id,
           post,
+          view,
         })),
       ];
       setResults(merged);
@@ -50,10 +54,15 @@ export default function SearchScreen() {
     }
   };
 
+  const handleViewChange = (nextView: FeedViewId) => {
+    setView(nextView);
+    if (query.length >= 2) handleSearch(query);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Search</Text>
-      <Text style={styles.subtitle}>Find users and recipe photos</Text>
+      <Text style={styles.subtitle}>Find users and {getFeedViewLabel(view).toLowerCase()} content</Text>
 
       <Input
         placeholder="Search users, captions, creators..."
@@ -61,6 +70,8 @@ export default function SearchScreen() {
         onChangeText={handleSearch}
         autoCapitalize="none"
       />
+
+      <FeedViewTabs selected={view} onSelect={handleViewChange} />
 
       {loading && <ActivityIndicator color={Colors.red} style={{ marginTop: Spacing.lg }} />}
 
@@ -85,7 +96,7 @@ export default function SearchScreen() {
 
           return (
             <TouchableOpacity style={styles.postItem}>
-              <Text style={styles.postBadge}>Recipe</Text>
+              <Text style={styles.postBadge}>{getFeedViewLabel(item.view)}</Text>
               <Text style={styles.postCaption} numberOfLines={2}>{item.post.caption ?? 'Untitled post'}</Text>
               <Text style={styles.postMeta}>@{item.post.author?.username ?? 'user'} · ♥ {item.post.like_count}</Text>
             </TouchableOpacity>
@@ -93,7 +104,7 @@ export default function SearchScreen() {
         }}
         ListEmptyComponent={
           query.length >= 2 && !loading ? (
-            <Text style={styles.empty}>No recipe results found</Text>
+            <Text style={styles.empty}>No results in {getFeedViewLabel(view).toLowerCase()}</Text>
           ) : null
         }
       />

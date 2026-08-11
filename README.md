@@ -6,7 +6,7 @@ Project is live at https://gym-tok-demo-v3.vercel.app
 
 GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI backend, Next.js moderation dashboard, PostgreSQL schema, AI worker pipeline, Docker Compose, and Kubernetes manifests.
 
-> **Mobile refactor (RecipeTok):** The Expo app was refactored to **RecipeTok** — a grid-only recipe photo app. Tabs are **Recipes | Upload | Profile**. Users browse a photo grid, upload recipe photos (meal prep / nutrition), and view their posts on Profile. The previous Watch scroll feed, Kitchen threads, and video/thread upload flows were removed; those routes redirect to Recipes.
+> **Mobile app:** GymTok fitness community — vertical video feed with **← → category swipe** and **↑ ↓ video scroll**, photo grid, community threads, video/photo/thread uploads, likes, comments, minimal ads, and engagement-based feed ranking.
 
 > **Demo mode:** Runs with placeholder credentials — no cloud account required. See [Demo Guide](docs/DEMO_GUIDE.md).
 
@@ -16,9 +16,9 @@ GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI 
 
 <img src="screenshots/01_welcome_screen.png" alt="GymTok welcome screen" width="280">
 
-### Recipe Grid (RecipeTok)
+### Video Feed
 
-![RecipeTok recipe grid](screenshots/02_video_feed.png)
+![GymTok video feed](screenshots/02_video_feed.png)
 
 ### Moderation Dashboard
 

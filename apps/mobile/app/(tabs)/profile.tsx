@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Button } from '../../src/components/Button';
+import { FeedViewTabs } from '../../src/components/FeedViewTabs';
 import { ProfilePostsPanel } from '../../src/components/ProfilePostsPanel';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
+import { FeedViewId } from '../../src/constants/categories';
 import { VideoPost } from '../../src/components/VideoCard';
 import { Colors, Spacing, PLACEHOLDER_USER_ID, USE_PLACEHOLDERS } from '../../src/constants/theme';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
@@ -16,6 +18,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<VideoPost[]>([]);
+  const [view, setView] = useState<FeedViewId>('feed');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,8 +76,9 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.postsSection}>
-          <Text style={styles.sectionTitle}>Your recipes</Text>
-          <ProfilePostsPanel posts={posts} />
+          <Text style={styles.sectionTitle}>Your content</Text>
+          <FeedViewTabs selected={view} onSelect={setView} />
+          <ProfilePostsPanel posts={posts} view={view} />
         </View>
 
         <View style={styles.logout}>

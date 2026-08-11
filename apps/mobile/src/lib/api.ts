@@ -2,7 +2,7 @@ import {
   ApiFeedCategory,
   FeedViewId,
   filterPostsForFeedView,
-  RECIPE_CATEGORIES,
+  PHOTO_CATEGORIES,
 } from '../constants/categories';
 import {
   PLACEHOLDER_THREAD_COMMENTS,
@@ -20,6 +20,7 @@ import {
   API_URL,
 } from '../constants/theme';
 import { createPlaceholderSession, delay } from './placeholders';
+import { rankPostsByEngagement } from './feedRanking';
 import { MediaType } from '../constants/categories';
 import { supabase } from './supabase';
 
@@ -105,32 +106,47 @@ class ApiClient {
         let posts = category === 'main_feed'
           ? [...PLACEHOLDER_POSTS]
           : PLACEHOLDER_POSTS.filter((p) => p.category === category);
-        posts = mergePublishedUploads(posts, 'recipes');
+        posts = mergePublishedUploads(
+          posts,
+          category === 'main_feed' ? 'feed' : category === 'advice' ? 'community' : 'photos',
+        );
         return { posts, next_cursor: null };
       }
       return { posts: [], next_cursor: null };
     }
   };
 
-  getFeedView = async (_view: FeedViewId = 'recipes', cursor?: string) => {
-    if (isDemoMode()) {
-      await delay(200);
-      const posts = mergePublishedUploads([...PLACEHOLDER_RECIPE_PHOTOS], 'recipes');
-      return { posts: filterPostsForFeedView(posts, 'recipes'), next_cursor: null };
+  getFeedView = async (view: FeedViewId, cursor?: string) => {
+    if (view === 'community') {
+      return this.getFeed(cursor, 'advice');
     }
-    const pages = await Promise.all(
-      RECIPE_CATEGORIES.map((category) => this.getFeed(cursor, category)),
-    );
-    const posts = pages
-      .flatMap((page) => page.posts)
-      .filter((post: { media_type?: string }) => post.media_type === 'photo');
-    return { posts, next_cursor: pages.find((page) => page.next_cursor)?.next_cursor ?? null };
+
+    if (view === 'photos') {
+      if (isDemoMode()) {
+        await delay(200);
+        const posts = mergePublishedUploads([...PLACEHOLDER_RECIPE_PHOTOS], 'photos');
+        return { posts: filterPostsForFeedView(posts, 'photos'), next_cursor: null };
+      }
+      const pages = await Promise.all(
+        PHOTO_CATEGORIES.map((category) => this.getFeed(cursor, category)),
+      );
+      const posts = pages
+        .flatMap((page) => page.posts)
+        .filter((post: { media_type?: string }) => post.media_type === 'photo');
+      return { posts, next_cursor: pages.find((page) => page.next_cursor)?.next_cursor ?? null };
+    }
+
+    const data = await this.getFeed(cursor, 'main_feed');
+    return {
+      posts: rankPostsByEngagement(filterPostsForFeedView(data.posts, 'feed')),
+      next_cursor: data.next_cursor,
+    };
   };
 
   createPost = async (
     caption?: string,
-    category: string = 'meal_prep',
-    mediaType: MediaType = 'photo',
+    category: string = 'workouts',
+    mediaType: MediaType = 'video',
     photoUri?: string | null,
   ) => {
     if (isDemoMode()) {
@@ -187,18 +203,18 @@ class ApiClient {
     }
   };
 
-  searchPosts = async (query: string, _view: FeedViewId = 'recipes') => {
+  searchPosts = async (query: string, view: FeedViewId = 'feed') => {
     const q = query.toLowerCase();
     if (isDemoMode()) {
       await delay(200);
-      const data = await this.getFeedView('recipes');
+      const data = await this.getFeedView(view);
       return data.posts.filter((post) =>
         (post.caption ?? '').toLowerCase().includes(q)
         || (post.author?.username ?? '').toLowerCase().includes(q),
       );
     }
     try {
-      const data = await this.getFeedView('recipes');
+      const data = await this.getFeedView(view);
       return data.posts.filter((post: { caption?: string; author?: { username?: string } }) =>
         (post.caption ?? '').toLowerCase().includes(q)
         || (post.author?.username ?? '').toLowerCase().includes(q),
@@ -335,15 +351,15 @@ export { createPlaceholderSession };
 
 const uploadedPosts: Array<Record<string, unknown>> = [];
 
-type UploadStoreWindow = Window & { __recipetokUploadedPosts?: Array<Record<string, unknown>> };
+type UploadStoreWindow = Window & { __gymtokUploadedPosts?: Array<Record<string, unknown>> };
 
 function getUploadStore(): Array<Record<string, unknown>> {
   if (typeof window !== 'undefined') {
     const w = window as UploadStoreWindow;
-    if (!w.__recipetokUploadedPosts) {
-      w.__recipetokUploadedPosts = uploadedPosts;
+    if (!w.__gymtokUploadedPosts) {
+      w.__gymtokUploadedPosts = uploadedPosts;
     }
-    return w.__recipetokUploadedPosts;
+    return w.__gymtokUploadedPosts;
   }
   return uploadedPosts;
 }
