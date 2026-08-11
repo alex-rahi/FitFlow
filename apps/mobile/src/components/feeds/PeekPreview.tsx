@@ -23,7 +23,7 @@ export function PeekPreview({ item, theme, variant, label }: Props) {
   const mediaTag =
     item?.type === 'post'
       ? item.post.media_type === 'form'
-        ? 'Form'
+        ? 'Form check'
         : item.post.media_type === 'text'
           ? 'Thread'
           : 'Video'

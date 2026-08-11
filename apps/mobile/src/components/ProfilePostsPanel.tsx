@@ -20,7 +20,7 @@ export function ProfilePostsPanel({ posts, view = 'feed', onOpen }: Props) {
     const emptyCopy = view === 'community'
       ? { title: 'No threads yet', subtitle: 'Start a community thread from Upload.' }
       : view === 'form'
-        ? { title: 'No workout logs yet', subtitle: 'Log a session from Upload → Form.' }
+        ? { title: 'No form checks yet', subtitle: 'Post a technique clip from Upload → Form.' }
         : { title: 'No videos yet', subtitle: 'Upload a workout video from the Upload tab.' };
     return (
       <View style={styles.empty}>
@@ -49,10 +49,10 @@ export function ProfilePostsPanel({ posts, view = 'feed', onOpen }: Props) {
         {filtered.map((post) => (
           <View key={post.id} style={styles.threadItem}>
             <Text style={styles.threadCaption} numberOfLines={1}>
-              {post.workout_form?.title ?? post.caption ?? 'Workout log'}
+              {post.workout_form?.exercise ?? post.caption ?? 'Form check'}
             </Text>
             <Text style={styles.threadMeta} numberOfLines={2}>
-              {post.workout_form?.entries?.map((e) => e.exercise).join(' · ') ?? '—'}
+              {post.workout_form?.focus_points?.join(' · ') ?? '—'}
             </Text>
             <Text style={styles.threadMeta}>♥ {post.like_count} · 💬 {post.comment_count}</Text>
           </View>

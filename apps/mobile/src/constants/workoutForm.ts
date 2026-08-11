@@ -1,29 +1,28 @@
-export interface WorkoutFormEntry {
-  exercise: string;
-  sets: string;
-  reps: string;
-  weight?: string;
-}
+/** Metadata for a workout form-check post (technique video + cues). */
 
 export interface WorkoutFormData {
-  title: string;
-  entries: WorkoutFormEntry[];
+  exercise: string;
+  focus_points: string[];
   notes?: string;
+  request_feedback?: boolean;
 }
 
 export const FORM_UPLOAD_DISCLAIMER = {
-  title: 'Before you log',
+  title: 'Before you post',
   body:
-    'Workout forms are public and visible in the Form feed. Do not include medical info, private data, or form-check video — use Video for that. Logs are reviewed by our moderation pipeline.',
-  checkbox: 'I understand and agree to share this workout log',
+    'Form-check clips are public and appear in the Form feed. Share technique video only — community feedback may include critical cues. Do not post private or medical information.',
+  liability:
+    'We are not responsible for injuries, accidents, or damages resulting from workouts, techniques, or equipment shown.',
+  checkbox: 'I understand and want form feedback on this clip',
 };
 
-export function formatWorkoutSet(entry: WorkoutFormEntry): string {
-  const load = entry.weight?.trim() ? ` @ ${entry.weight.trim()}` : '';
-  return `${entry.sets}×${entry.reps}${load}`;
+export function parseFocusPoints(text: string): string[] {
+  return text
+    .split(/[\n,]+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
-export function summarizeWorkoutForm(form: WorkoutFormData): string {
-  const lines = form.entries.map((e) => `${e.exercise} — ${formatWorkoutSet(e)}`);
-  return [form.title, ...lines, form.notes].filter(Boolean).join('\n');
+export function formCheckCaption(form: WorkoutFormData): string {
+  return `${form.exercise} — form check`;
 }

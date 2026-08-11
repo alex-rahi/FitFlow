@@ -4,7 +4,7 @@ import {
   filterPostsForFeedView,
   FORM_CATEGORIES,
 } from '../constants/categories';
-import { WorkoutFormData } from '../constants/workoutForm';
+import { formCheckCaption, WorkoutFormData } from '../constants/workoutForm';
 import {
   PLACEHOLDER_THREAD_COMMENTS,
   ThreadComment,
@@ -156,7 +156,7 @@ class ApiClient {
       const post = {
         id: `post-${Date.now()}`,
         user_id: PLACEHOLDER_USER_ID,
-        caption: workoutForm?.title ?? caption,
+        caption: workoutForm ? formCheckCaption(workoutForm) : caption,
         category,
         media_type: mediaType,
         workout_form: workoutForm ?? null,
@@ -181,7 +181,7 @@ class ApiClient {
     });
     getUploadStore().unshift({
       ...created,
-      caption: workoutForm?.title ?? caption,
+      caption: workoutForm ? formCheckCaption(workoutForm) : caption,
       category,
       media_type: mediaType,
       workout_form: workoutForm ?? null,

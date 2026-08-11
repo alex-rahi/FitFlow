@@ -56,11 +56,14 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
           onPress={() => onOpen(item, index)}
         >
           <View style={[styles.thumb, { backgroundColor: GRADIENTS[index % GRADIENTS.length] }]}>
-            <Text style={styles.formIcon}>📋</Text>
+            <Text style={styles.formIcon}>🎯</Text>
           </View>
           <View style={styles.meta}>
             <Text style={styles.caption} numberOfLines={2}>
-              {item.workout_form?.title ?? item.caption ?? 'Workout log'}
+              {item.workout_form?.exercise ?? item.caption ?? 'Form check'}
+            </Text>
+            <Text style={styles.formCue} numberOfLines={1}>
+              {item.workout_form?.focus_points?.[0] ?? 'Technique feedback'}
             </Text>
             <View style={styles.footer}>
               <Text style={styles.author}>@{item.author?.username ?? 'user'}</Text>
@@ -96,6 +99,7 @@ const styles = StyleSheet.create({
   formIcon: { fontSize: 32 },
   meta: { padding: Spacing.sm },
   caption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  formCue: { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.xs },
   author: { color: Colors.textMuted, fontSize: 11, flex: 1 },
   likes: { color: Colors.red, fontSize: 11, fontWeight: '600' },
