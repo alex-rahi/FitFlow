@@ -17,6 +17,7 @@ import {
   PLACEHOLDER_NOTIFICATIONS,
   PLACEHOLDER_USER_ID,
   isDemoMode,
+  isLocalYoloMode,
   API_URL,
 } from '../constants/theme';
 import { createPlaceholderSession, delay } from './placeholders';
@@ -26,13 +27,13 @@ import { supabase } from './supabase';
 
 class ApiClient {
   private async getToken(): Promise<string | null> {
-    if (isDemoMode()) return 'placeholder-access-token';
+    if (isDemoMode() || isLocalYoloMode()) return 'placeholder-access-token';
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    if (isDemoMode()) {
+    if (isDemoMode() && !isLocalYoloMode()) {
       throw new Error('placeholder-mode');
     }
 
@@ -149,7 +150,7 @@ class ApiClient {
     mediaType: MediaType = 'video',
     photoUri?: string | null,
   ) => {
-    if (isDemoMode()) {
+    if (isDemoMode() && !isLocalYoloMode()) {
       await delay(300);
       const post = {
         id: `post-${Date.now()}`,
@@ -173,7 +174,10 @@ class ApiClient {
     if (!token) {
       throw new Error('You must be signed in to upload');
     }
-    const created = await this.request<any>('/posts', { method: 'POST', body: JSON.stringify({ caption, category }) });
+    const created = await this.request<any>('/posts', {
+      method: 'POST',
+      body: JSON.stringify({ caption, category, media_type: mediaType }),
+    });
     getUploadStore().unshift({
       ...created,
       caption,
@@ -244,19 +248,63 @@ class ApiClient {
     return this.request<any>(`/posts/${postId}/confirm-upload`, { method: 'POST' });
   };
 
+  /** Upload media to the backend for local YOLO moderation. */
+  uploadMediaFile = async (postId: string, uri: string, mediaType: 'video' | 'photo') => {
+    if (isDemoMode() && !isLocalYoloMode()) {
+      await delay(600);
+      return;
+    }
+
+    const token = await this.getToken();
+    if (!token) throw new Error('You must be signed in to upload');
+
+    const response = await fetch(uri);
+    if (!response.ok) throw new Error('Could not read the selected media file');
+    const blob = await response.blob();
+    const ext = mediaType === 'photo' ? 'jpg' : 'mp4';
+    const form = new FormData();
+    form.append('file', blob, `upload.${ext}`);
+
+    const res = await fetch(`${API_URL}/api/v1/moderation/posts/${postId}/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(typeof err.detail === 'string' ? err.detail : 'Upload failed');
+    }
+    return res.json();
+  };
+
   /** Runs YOLO moderation and auto-publishes on pass — no manual review queue. */
   runYoloModeration = async (postId: string) => {
     const store = getUploadStore();
     const post = store.find((p) => String(p.id) === String(postId));
     const isText = post?.media_type === 'text';
 
-    if (isDemoMode()) {
+    if (isDemoMode() && !isLocalYoloMode()) {
       await delay(isText ? 600 : 1200);
       if (post) {
         post.status = 'published';
         post.moderation_decision = 'publish';
       }
       return { id: postId, status: 'published', moderation_decision: 'publish' };
+    }
+
+    if (isLocalYoloMode()) {
+      try {
+        const result = await this.request<any>(`/moderation/posts/${postId}/run`, { method: 'POST' });
+        if (post) {
+          post.status = result.status;
+          post.moderation_decision = result.moderation_decision;
+          post.detection_labels = result.detection_labels;
+        }
+        return result;
+      } catch (err) {
+        if (post) post.status = 'rejected';
+        throw err;
+      }
     }
 
     for (let attempt = 0; attempt < 6; attempt++) {
@@ -270,13 +318,6 @@ class ApiClient {
         if (err instanceof Error && err.message.includes('rejected')) throw err;
       }
       await delay(1500);
-    }
-
-    // Worker may not be running — publish locally so demo uploads still complete.
-    if (post) {
-      post.status = 'published';
-      post.moderation_decision = 'publish';
-      return { id: postId, status: 'published', moderation_decision: 'publish' };
     }
 
     throw new Error('YOLO moderation timed out — check back shortly');

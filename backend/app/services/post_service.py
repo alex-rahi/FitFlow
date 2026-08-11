@@ -10,6 +10,7 @@ from app.integrations.storage import create_signed_upload_url
 from app.models.categories import PostCategory
 from app.models.schemas import PostCreate, PostResponse, PostStatus, UploadUrlResponse, UserProfile
 from app.services.feed_ranking import feed_rank_order_sql, rank_posts
+from app.services import local_post_store
 
 logger = logging.getLogger("gymtok.api")
 
@@ -37,6 +38,14 @@ async def _attach_author(post_dict: dict) -> PostResponse:
 
 
 async def create_post(user_id: UUID, data: PostCreate) -> PostResponse:
+    if settings.use_local_yolo:
+        return local_post_store.create_local_post(
+            user_id,
+            data.caption,
+            data.category.value,
+            data.media_type or "video",
+        )
+
     if settings.use_placeholders:
         post_id = uuid.uuid4()
         storage_path = f"{user_id}/{post_id}.mp4"
@@ -143,6 +152,14 @@ async def confirm_upload(user_id: UUID, post_id: UUID) -> PostResponse:
 
 
 async def get_post(post_id: UUID) -> PostResponse | None:
+    if settings.use_local_yolo:
+        local = local_post_store.get_local_post(post_id)
+        if local:
+            return local
+
+    if settings.use_placeholders:
+        return None
+
     pool = await get_pool()
     row = await pool.fetchrow("SELECT * FROM posts WHERE id = $1", post_id)
     if not row:
@@ -178,7 +195,13 @@ async def get_feed(
             posts = [p for p in posts if p.get("category") == category.value]
         elif not category or category == PostCategory.MAIN_FEED:
             posts = rank_posts(posts)
-        return [_placeholder_post_response(dict(p)) for p in posts[:limit]]
+        responses = [_placeholder_post_response(dict(p)) for p in posts[:limit]]
+        if settings.use_local_yolo:
+            local = local_post_store.list_published_local_posts()
+            if category and category != PostCategory.MAIN_FEED:
+                local = [p for p in local if p.category.value == category.value]
+            responses = local + responses
+        return responses[:limit]
 
     pool = await get_pool()
     category_clause = ""

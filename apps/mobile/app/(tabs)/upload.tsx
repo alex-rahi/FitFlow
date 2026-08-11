@@ -21,7 +21,7 @@ import {
   MediaType,
   PostCategoryId,
 } from '../../src/constants/categories';
-import { Colors, Radius, Spacing, isDemoMode } from '../../src/constants/theme';
+import { Colors, Radius, Spacing, isDemoMode, isLocalYoloMode } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
@@ -69,7 +69,7 @@ export default function UploadScreen() {
       notify('Empty', 'Write something first.');
       return;
     }
-    if (!isDemoMode() && !session) {
+    if (!isDemoMode() && !isLocalYoloMode() && !session) {
       setError('Log in to upload.');
       return;
     }
@@ -86,11 +86,16 @@ export default function UploadScreen() {
         mediaType === 'photo' ? mediaUri : null,
       );
 
-      if (mediaType === 'video' && mediaUri && !isDemoMode()) {
-        setStatus('Uploading video...');
-        const { storage_path } = await api.getUploadUrl(post.id);
-        await uploadVideoFile(storage_path, mediaUri);
-        await api.confirmUpload(post.id);
+      if (!isText && mediaUri) {
+        if (isLocalYoloMode()) {
+          setStatus('Uploading media...');
+          await api.uploadMediaFile(post.id, mediaUri, mediaType as 'video' | 'photo');
+        } else if (!isDemoMode() && mediaType === 'video') {
+          setStatus('Uploading video...');
+          const { storage_path } = await api.getUploadUrl(post.id);
+          await uploadVideoFile(storage_path, mediaUri);
+          await api.confirmUpload(post.id);
+        }
       }
 
       setStatus('Moderating...');

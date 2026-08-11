@@ -10,5 +10,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN python scripts/download_model.py
+
+EXPOSE 8001
 
 CMD ["python", "-m", "app.main"]

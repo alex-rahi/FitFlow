@@ -20,6 +20,10 @@ export function isDemoMode(): boolean {
   return false;
 }
 
+export function isLocalYoloMode(): boolean {
+  return process.env.EXPO_PUBLIC_USE_LOCAL_YOLO === 'true';
+}
+
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? PLACEHOLDER_SUPABASE_URL;
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? PLACEHOLDER_ANON_KEY;

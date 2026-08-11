@@ -7,6 +7,7 @@ import tempfile
 from uuid import UUID
 
 import asyncpg
+import numpy as np
 
 from app.config import settings
 from app.pipeline.frame_extractor import extract_frames, generate_thumbnail, get_video_duration
@@ -32,11 +33,12 @@ async def process_job(pool: asyncpg.Pool, job: dict):
     user = await pool.fetchrow("SELECT * FROM profiles WHERE id = $1", post["user_id"])
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        video_path = os.path.join(tmpdir, "video.mp4")
-        # In production, download from Supabase Storage
-        # For now, skip if file doesn't exist and use mock pipeline
-        if not os.path.exists(video_path):
-            logger.info("No local video — running mock pipeline for post %s", post_id)
+        storage_path = post.get("raw_video_url") or ""
+        local_upload = os.path.join(settings.uploads_dir, storage_path) if storage_path else ""
+        video_path = local_upload if local_upload and os.path.isfile(local_upload) else os.path.join(tmpdir, "video.mp4")
+
+        if not os.path.isfile(video_path):
+            logger.info("No local video at %s — running analyze on mock path", local_upload or video_path)
             video_path = None
 
         all_detections: list[dict] = []
@@ -70,7 +72,8 @@ async def process_job(pool: asyncpg.Pool, job: dict):
                 "UPDATE posts SET duration_seconds = $1 WHERE id = $2", duration, post_id
             )
         else:
-            all_detections = detect_objects(None, settings.yolo_model_path)  # type: ignore
+            logger.warning("No upload file for post %s — running YOLO on placeholder frame", post_id)
+            all_detections = detect_objects(np.zeros((480, 640, 3), dtype=np.uint8), settings.yolo_model_path)
             all_mod_scores = [
                 {"category": "explicit_content", "score": 0.05},
                 {"category": "violence_gore", "score": 0.02},

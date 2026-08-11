@@ -53,6 +53,7 @@ class ProfileUpdate(BaseModel):
 class PostCreate(BaseModel):
     caption: str | None = None
     category: PostCategory = PostCategory.MEAL_PREP
+    media_type: str | None = "video"
 
 
 class PostResponse(BaseModel):
@@ -60,12 +61,14 @@ class PostResponse(BaseModel):
     user_id: UUID
     category: PostCategory = PostCategory.MEAL_PREP
     caption: str | None = None
+    media_type: str | None = None
     raw_video_url: str | None = None
     processed_video_url: str | None = None
     thumbnail_url: str | None = None
     duration_seconds: float | None = None
     status: PostStatus
     moderation_decision: str | None = None
+    detection_labels: list[str] = []
     like_count: int = 0
     comment_count: int = 0
     view_count: int = 0
