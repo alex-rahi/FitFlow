@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator, Image } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
 import { createElement } from 'react';
 import { resolvePlaybackUrl } from '../lib/videoUrl';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
 
-const PLACEHOLDER_GRADIENTS = ['#1a1a2e', '#16213e', '#0f3460', '#1a1a1a', '#2d1b2e'];
+const PLACEHOLDER_GRADIENTS = ['#0d0d12', '#12101a', '#0a1018', '#100a0a', '#0a120f'];
 
 export interface VideoPost {
   id: string;
@@ -27,7 +35,8 @@ interface VideoCardProps {
   onLike: () => void;
   onComment?: () => void;
   height: number;
-  minimal?: boolean;
+  immersive?: boolean;
+  bottomInset?: number;
 }
 
 function WebVideo({ uri }: { uri: string }) {
@@ -40,7 +49,7 @@ function WebVideo({ uri }: { uri: string }) {
     controls: false,
     controlsList: 'nofullscreen nodownload noremoteplayback',
     disablePictureInPicture: true,
-    preload: 'metadata',
+    preload: 'auto',
     style: {
       width: '100%',
       height: '100%',
@@ -51,10 +60,31 @@ function WebVideo({ uri }: { uri: string }) {
   });
 }
 
-export function VideoCard({ post, index, onLike, onComment, height, minimal = false }: VideoCardProps) {
+function BottomScrim() {
+  return (
+    <View style={styles.scrimWrap} pointerEvents="none">
+      <View style={[styles.scrim, Platform.OS === 'web' && styles.scrimWeb]} />
+    </View>
+  );
+}
+
+export function VideoCard({
+  post,
+  index,
+  onLike,
+  onComment,
+  height,
+  immersive = false,
+  bottomInset = 64,
+}: VideoCardProps) {
   const isPhoto = post.media_type === 'photo';
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS && !isPhoto);
+  const [liked, setLiked] = useState(false);
+
+  useEffect(() => {
+    setLiked(false);
+  }, [post.id]);
 
   useEffect(() => {
     let active = true;
@@ -77,41 +107,59 @@ export function VideoCard({ post, index, onLike, onComment, height, minimal = fa
 
   const showVideo = !isPhoto && playbackUrl && Platform.OS === 'web';
 
+  const handleLike = () => {
+    setLiked(true);
+    onLike();
+  };
+
   return (
     <View style={[styles.card, { height }]}>
-      <View style={[styles.videoArea, { backgroundColor: PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length] }]}>
+      <View
+        style={[
+          styles.media,
+          { backgroundColor: PLACEHOLDER_GRADIENTS[index % PLACEHOLDER_GRADIENTS.length] },
+        ]}
+      >
         {isPhoto ? (
           post.photo_uri ? (
-            <Image source={{ uri: post.photo_uri }} style={styles.photo} resizeMode="cover" />
+            <Image source={{ uri: post.photo_uri }} style={styles.mediaFill} resizeMode="cover" />
           ) : (
-            <Text style={styles.playIcon}>📷</Text>
+            <Text style={styles.placeholderIcon}>📷</Text>
           )
         ) : loadingVideo ? (
           <ActivityIndicator color={Colors.red} size="large" />
         ) : showVideo ? (
           <WebVideo uri={playbackUrl} />
         ) : (
-          <Text style={styles.playIcon}>▶</Text>
+          <View style={styles.placeholderVideo}>
+            <Text style={styles.placeholderIcon}>▶</Text>
+          </View>
         )}
       </View>
 
-      <View style={styles.overlay} pointerEvents="box-none">
-        <View style={[styles.sideActions, minimal && styles.sideActionsMinimal]}>
-          <TouchableOpacity style={styles.actionBtn} onPress={onLike}>
-            <Text style={styles.actionIcon}>♥</Text>
-            {!minimal && <Text style={styles.actionCount}>{post.like_count}</Text>}
+      {immersive && <BottomScrim />}
+
+      <View style={[styles.overlay, { paddingBottom: bottomInset }]} pointerEvents="box-none">
+        <View style={styles.sideActions}>
+          <TouchableOpacity
+            style={[styles.glassBtn, liked && styles.glassBtnActive]}
+            onPress={handleLike}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.actionIcon, liked && styles.actionIconActive]}>♥</Text>
+            <Text style={styles.actionCount}>{post.like_count + (liked ? 1 : 0)}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={onComment}>
+          <TouchableOpacity style={styles.glassBtn} onPress={onComment} activeOpacity={0.7}>
             <Text style={styles.actionIcon}>💬</Text>
-            {!minimal && <Text style={styles.actionCount}>{post.comment_count}</Text>}
+            <Text style={styles.actionCount}>{post.comment_count}</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.bottomInfo, minimal && styles.bottomInfoMinimal]}>
+        <View style={styles.bottomInfo}>
           <Text style={styles.username}>@{post.author?.username ?? 'user'}</Text>
-          {post.caption && (
-            <Text style={styles.caption} numberOfLines={minimal ? 1 : 2}>{post.caption}</Text>
-          )}
+          {post.caption ? (
+            <Text style={styles.caption} numberOfLines={immersive ? 2 : 3}>{post.caption}</Text>
+          ) : null}
         </View>
       </View>
     </View>
@@ -119,18 +167,46 @@ export function VideoCard({ post, index, onLike, onComment, height, minimal = fa
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: Colors.matteBlack },
-  videoArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  photo: { width: '100%', height: '100%' },
-  playIcon: { fontSize: 40, color: Colors.textMuted },
+  card: { backgroundColor: '#000' },
+  media: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  mediaFill: { width: '100%', height: '100%' },
+  placeholderVideo: { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' },
+  placeholderIcon: { fontSize: 44, color: 'rgba(255,255,255,0.25)' },
+  scrimWrap: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
+  scrim: {
+    height: '45%',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  scrimWeb: {
+    backgroundColor: 'transparent',
+    // @ts-expect-error web-only CSS
+    backgroundImage: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.4) 45%, transparent 100%)',
+  },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end' },
-  sideActions: { position: 'absolute', right: Spacing.md, bottom: 100, gap: Spacing.lg },
-  sideActionsMinimal: { bottom: 72, gap: Spacing.md },
-  actionBtn: { alignItems: 'center' },
-  actionIcon: { fontSize: 24, color: Colors.textPrimary },
-  actionCount: { color: Colors.textPrimary, fontSize: 11, fontWeight: '600', marginTop: 2 },
-  bottomInfo: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
-  bottomInfoMinimal: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl },
-  username: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700' },
-  caption: { color: Colors.textSecondary, fontSize: 13, marginTop: 4 },
+  sideActions: {
+    position: 'absolute',
+    right: Spacing.md,
+    bottom: 120,
+    gap: Spacing.md,
+  },
+  glassBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    minWidth: 48,
+  },
+  glassBtnActive: {
+    backgroundColor: 'rgba(230,57,70,0.35)',
+    borderColor: 'rgba(230,57,70,0.5)',
+  },
+  actionIcon: { fontSize: 22, color: Colors.textPrimary },
+  actionIconActive: { color: Colors.red },
+  actionCount: { color: Colors.textPrimary, fontSize: 11, fontWeight: '700', marginTop: 2 },
+  bottomInfo: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
+  username: { color: Colors.textPrimary, fontSize: 15, fontWeight: '800' },
+  caption: { color: 'rgba(255,255,255,0.82)', fontSize: 14, marginTop: 6, lineHeight: 20 },
 });
