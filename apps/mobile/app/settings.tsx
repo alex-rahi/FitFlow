@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../src/components/Button';
 import { useAuth } from '../src/context/AuthContext';
 import { analytics } from '../src/lib/analytics';
+import { resetUserInterests } from '../src/lib/userInterests';
+import { useUserInterests } from '../src/hooks/useUserInterests';
 import { Colors, Radius, Spacing, USE_PLACEHOLDERS } from '../src/constants/theme';
 import { useScreenAnalytics } from '../src/hooks/useScreenAnalytics';
 
@@ -12,6 +14,7 @@ export default function SettingsScreen() {
   useScreenAnalytics('settings');
   const router = useRouter();
   const { signOut, isPlaceholder } = useAuth();
+  const { topInterests } = useUserInterests();
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
 
   useFocusEffect(
@@ -55,6 +58,27 @@ export default function SettingsScreen() {
         <SettingsSection title="Content">
           <SettingsRow label="Age Restriction" value="18+" />
           <SettingsRow label="Community Guidelines" onPress={() => {}} />
+        </SettingsSection>
+
+        <SettingsSection title="Your Interests">
+          {topInterests.length === 0 ? (
+            <View style={styles.analyticsHint}>
+              <Text style={styles.analyticsHintText}>
+                Browse the feed, like posts, and visit lanes — GymTok learns what you lean toward (meal prep, equipment, etc.).
+              </Text>
+            </View>
+          ) : (
+            topInterests.map((interest) => (
+              <SettingsRow
+                key={interest.topic}
+                label={interest.label}
+                value={String(Math.round(interest.score))}
+              />
+            ))
+          )}
+          {topInterests.length > 0 && (
+            <SettingsRow label="Reset interests" onPress={() => resetUserInterests()} />
+          )}
         </SettingsSection>
 
         <SettingsSection title="Analytics">

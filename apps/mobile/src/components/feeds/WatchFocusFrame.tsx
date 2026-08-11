@@ -37,6 +37,7 @@ interface Props {
   prevLaneLabel?: string;
   nextLaneLabel?: string;
   hudOpacity: Animated.Value;
+  topInterests?: { topic: string; label: string; score: number }[];
   children: ReactNode;
 }
 
@@ -65,6 +66,7 @@ export function WatchFocusFrame({
   prevLaneLabel,
   nextLaneLabel,
   hudOpacity,
+  topInterests = [],
   children,
 }: Props) {
   const { screenH, screenW, frameW } = getWatchScreenSize(width, height);
@@ -100,6 +102,19 @@ export function WatchFocusFrame({
               );
             })}
           </Animated.View>
+
+          {topInterests.length > 0 ? (
+            <Animated.View style={[styles.interestRow, { opacity: hudOpacity }]}>
+              {topInterests.map((interest) => (
+                <View
+                  key={interest.topic}
+                  style={[styles.interestChip, { borderColor: withAlpha(theme.accent, 0.35) }]}
+                >
+                  <Text style={[styles.interestChipText, { color: theme.accent }]}>{interest.label}</Text>
+                </View>
+              ))}
+            </Animated.View>
+          ) : null}
 
           <View style={styles.peekTop}>
             {nextItem ? (
@@ -234,6 +249,26 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     fontSize: 9,
     fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  interestRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    marginBottom: 2,
+  },
+  interestChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  interestChipText: {
+    fontSize: 9,
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
   peekTop: { width: '100%', paddingHorizontal: 4 },
