@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ProfilePostsPanel } from '../../src/components/ProfilePostsPanel';
+import { SessionAnalyticsCard } from '../../src/components/SessionAnalyticsCard';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
+import { analytics, SessionSummary } from '../../src/lib/analytics';
 import { VideoPost } from '../../src/components/VideoCard';
 import { Colors, Spacing, PLACEHOLDER_USER_ID, USE_PLACEHOLDERS } from '../../src/constants/theme';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
@@ -16,6 +18,15 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<VideoPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<SessionSummary>(() => analytics.getSessionSummary());
+
+  useFocusEffect(
+    useCallback(() => {
+      void analytics.hydrate().then(() => {
+        setSummary(analytics.getSessionSummary());
+      });
+    }, []),
+  );
 
   useEffect(() => {
     const userId = session?.user?.id ?? (USE_PLACEHOLDERS ? PLACEHOLDER_USER_ID : null);
@@ -56,6 +67,12 @@ export default function ProfileScreen() {
           <Text style={styles.stat}>{profile?.follower_count ?? 0} followers</Text>
         </View>
 
+        {summary.totalEvents > 0 && (
+          <View style={styles.analyticsSection}>
+            <SessionAnalyticsCard summary={summary} compact />
+          </View>
+        )}
+
         <ProfilePostsPanel posts={posts} view="feed" />
 
         <TouchableOpacity onPress={() => router.push('/settings')} style={styles.link}>
@@ -89,6 +106,7 @@ const styles = StyleSheet.create({
   handle: { color: Colors.textMuted, fontSize: 13 },
   bio: { color: Colors.textSecondary, fontSize: 13, marginTop: Spacing.sm, textAlign: 'center' },
   stats: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.lg, paddingVertical: Spacing.lg },
+  analyticsSection: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
   stat: { color: Colors.textMuted, fontSize: 13 },
   link: { alignItems: 'center', paddingVertical: Spacing.sm },
   linkText: { color: Colors.textPrimary, fontSize: 14 },

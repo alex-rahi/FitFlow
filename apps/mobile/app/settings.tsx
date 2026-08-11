@@ -3,8 +3,9 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../src/components/Button';
+import { SessionAnalyticsCard } from '../src/components/SessionAnalyticsCard';
 import { useAuth } from '../src/context/AuthContext';
-import { analytics } from '../src/lib/analytics';
+import { analytics, AnalyticsEvent, SessionSummary } from '../src/lib/analytics';
 import { resetUserInterests } from '../src/lib/userInterests';
 import { useUserInterests } from '../src/hooks/useUserInterests';
 import { Colors, Radius, Spacing, USE_PLACEHOLDERS } from '../src/constants/theme';
@@ -15,17 +16,29 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { signOut, isPlaceholder } = useAuth();
   const { topInterests } = useUserInterests();
-  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
+  const [summary, setSummary] = useState<SessionSummary>(() => analytics.getSessionSummary());
+  const [recentEvents, setRecentEvents] = useState<AnalyticsEvent[]>([]);
+
+  const refreshAnalytics = useCallback(async () => {
+    await analytics.hydrate();
+    setSummary(analytics.getSessionSummary());
+    setRecentEvents(analytics.getRecentEvents(8));
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      setEventCounts(analytics.getEventCounts());
-    }, []),
+      void refreshAnalytics();
+    }, [refreshAnalytics]),
   );
 
   const handleSignOut = async () => {
     await signOut();
     router.replace('/(auth)/welcome');
+  };
+
+  const handleClearAnalytics = async () => {
+    await analytics.clearSession();
+    await refreshAnalytics();
   };
 
   return (
@@ -82,16 +95,18 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="Analytics">
-          <SettingsRow label="Events captured (session)" value={String(analytics.getTotalEvents())} />
-          {Object.entries(eventCounts).slice(0, 6).map(([name, count]) => (
-            <SettingsRow key={name} label={name.replace(/_/g, ' ')} value={String(count)} />
-          ))}
-          {analytics.getTotalEvents() === 0 && (
+          {summary.totalEvents === 0 ? (
             <View style={styles.analyticsHint}>
               <Text style={styles.analyticsHintText}>
-                Browse Home, Recipes, and Community to populate session analytics.
+                Browse the feed, switch lanes, like posts, and upload to populate session analytics.
               </Text>
             </View>
+          ) : (
+            <SessionAnalyticsCard
+              summary={summary}
+              recentEvents={recentEvents}
+              onClear={handleClearAnalytics}
+            />
           )}
         </SettingsSection>
 
