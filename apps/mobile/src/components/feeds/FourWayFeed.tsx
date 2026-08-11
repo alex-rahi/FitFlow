@@ -5,21 +5,31 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
-  GestureResponderEvent,
   Animated,
   Easing,
+  PanResponder,
+  useWindowDimensions,
 } from 'react-native';
 import { FEED_LANES, FeedLaneId, filterPostsForLane } from '../../constants/categories';
 import { rankPostsByEngagement } from '../../lib/feedRanking';
 import { buildScrollFeedItems, ScrollFeedItem } from '../../lib/feedItems';
+import { getLaneTheme, mixPointer, webAmbientStyle } from '../../lib/feedTheme';
 import { analytics } from '../../lib/analytics';
-import { APP_NAME, Colors, Spacing } from '../../constants/theme';
+import { Colors, Spacing } from '../../constants/theme';
 import { VideoCard, VideoPost } from '../VideoCard';
 import { ThreadSlide } from '../ThreadSlide';
 import { AdPlaceholder } from '../AdPlaceholder';
+import { WatchFocusFrame, getWatchScreenSize } from './WatchFocusFrame';
 
-const SWIPE_THRESHOLD = 48;
-const HUD_HIDE_MS = 2800;
+const SWIPE_THRESHOLD = 52;
+const HUD_HIDE_MS = 3200;
+
+function laneItemAt(lanes: Lane[], laneIndex: number, itemIndex: number): ScrollFeedItem | null {
+  if (laneIndex < 0 || laneIndex >= lanes.length) return null;
+  const laneItems = lanes[laneIndex].items;
+  if (laneItems.length === 0) return null;
+  return laneItems[Math.min(itemIndex, laneItems.length - 1)];
+}
 
 interface Lane {
   id: FeedLaneId;
@@ -44,14 +54,22 @@ export function FourWayFeed({
   onLike,
   onComment,
 }: Props) {
+  const { width } = useWindowDimensions();
   const [laneIdx, setLaneIdx] = useState(0);
   const [itemIdx, setItemIdx] = useState(0);
   const [hudVisible, setHudVisible] = useState(true);
-  const touchStart = useRef({ x: 0, y: 0 });
+  const [pointer, setPointer] = useState({ x: 0.5, y: 0.4 });
   const seenImpressions = useRef(new Set<string>());
   const hudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const dragX = useRef(new Animated.Value(0)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const hudOpacity = useRef(new Animated.Value(1)).current;
+  const themeBlend = useRef(new Animated.Value(0)).current;
 
   const lanes: Lane[] = useMemo(
     () =>
@@ -73,9 +91,10 @@ export function FourWayFeed({
   );
 
   const lane = lanes[laneIdx];
+  const theme = getLaneTheme(lane?.id ?? 'main_feed');
   const items = lane?.items ?? [];
   const item = items[itemIdx];
-  const progress = items.length > 1 ? (itemIdx + 1) / items.length : 1;
+  const progress = items.length > 1 ? itemIdx / (items.length - 1) : 0;
 
   const revealHud = useCallback(() => {
     setHudVisible(true);
@@ -89,6 +108,22 @@ export function FourWayFeed({
       if (hudTimer.current) clearTimeout(hudTimer.current);
     };
   }, [revealHud]);
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [progress, progressAnim]);
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(themeBlend, { toValue: 1, duration: 200, useNativeDriver: false }),
+      Animated.timing(themeBlend, { toValue: 0, duration: 400, useNativeDriver: false }),
+    ]).start();
+  }, [laneIdx, themeBlend]);
 
   const trackImpression = useCallback((current: ScrollFeedItem) => {
     if (seenImpressions.current.has(current.id)) return;
@@ -114,43 +149,66 @@ export function FourWayFeed({
     if (item) trackImpression(item);
   }, [item, trackImpression]);
 
+  const resetDrag = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(dragX, { toValue: 0, friction: 7, tension: 80, useNativeDriver: true }),
+      Animated.spring(dragY, { toValue: 0, friction: 7, tension: 80, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
+    ]).start();
+  }, [dragX, dragY, scaleAnim]);
+
   const animateTransition = useCallback((dir: 'up' | 'down' | 'left' | 'right', apply: () => void) => {
     const exitOffset =
-      dir === 'up' ? -48 : dir === 'down' ? 48 : dir === 'left' ? -56 : 56;
+      dir === 'up' ? -64 : dir === 'down' ? 64 : dir === 'left' ? -width * 0.12 : width * 0.12;
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 100,
+        duration: 120,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: exitOffset,
-        duration: 100,
+        duration: 120,
         easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.94,
+        duration: 120,
         useNativeDriver: true,
       }),
     ]).start(() => {
       apply();
-      slideAnim.setValue(-exitOffset * 0.6);
+      slideAnim.setValue(-exitOffset * 0.45);
+      fadeAnim.setValue(0.4);
+      scaleAnim.setValue(1.04);
+      dragX.setValue(0);
+      dragY.setValue(0);
       revealHud();
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration: 260,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 220,
+          duration: 260,
           easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 90,
           useNativeDriver: true,
         }),
       ]).start();
     });
-  }, [fadeAnim, revealHud, slideAnim]);
+  }, [fadeAnim, revealHud, scaleAnim, slideAnim, width, dragX, dragY]);
 
   const changeLane = useCallback((next: number, dir: 'left' | 'right') => {
     if (next < 0 || next >= lanes.length || next === laneIdx) return;
@@ -174,27 +232,46 @@ export function FourWayFeed({
       changeLane(laneIdx + 1, 'left');
     } else if (dir === 'right') {
       changeLane(laneIdx - 1, 'right');
-    }
-  }, [animateTransition, changeLane, itemIdx, items.length, laneIdx]);
-
-  const handleTouchStart = (e: GestureResponderEvent) => {
-    revealHud();
-    touchStart.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
-  };
-
-  const handleTouchEnd = (e: GestureResponderEvent) => {
-    const dx = e.nativeEvent.pageX - touchStart.current.x;
-    const dy = e.nativeEvent.pageY - touchStart.current.y;
-    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) navigate('left');
-      else navigate('right');
     } else {
-      if (dy < 0) navigate('up');
-      else navigate('down');
+      resetDrag();
     }
-  };
+  }, [animateTransition, changeLane, itemIdx, items.length, laneIdx, resetDrag]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, g) =>
+          Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
+        onPanResponderGrant: () => {
+          revealHud();
+          dragX.setOffset(0);
+          dragY.setOffset(0);
+        },
+        onPanResponderMove: (_, g) => {
+          const damp = 0.42;
+          dragX.setValue(g.dx * damp);
+          dragY.setValue(g.dy * damp);
+          const dist = Math.min(Math.hypot(g.dx, g.dy) / 280, 0.06);
+          scaleAnim.setValue(1 - dist);
+        },
+        onPanResponderRelease: (_, g) => {
+          const { dx, dy } = g;
+          if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+            resetDrag();
+            return;
+          }
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) navigate('left');
+            else navigate('right');
+          } else {
+            if (dy < 0) navigate('up');
+            else navigate('down');
+          }
+        },
+      }),
+    [dragX, dragY, navigate, resetDrag, revealHud, scaleAnim],
+  );
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -213,11 +290,11 @@ export function FourWayFeed({
       e.preventDefault();
       revealHud();
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-        if (e.deltaX > 20) navigate('left');
-        else if (e.deltaX < -20) navigate('right');
+        if (e.deltaX > 16) navigate('left');
+        else if (e.deltaX < -16) navigate('right');
       } else {
-        if (e.deltaY > 20) navigate('up');
-        else if (e.deltaY < -20) navigate('down');
+        if (e.deltaY > 16) navigate('up');
+        else if (e.deltaY < -16) navigate('down');
       }
     };
 
@@ -229,148 +306,224 @@ export function FourWayFeed({
     };
   }, [navigate, revealHud]);
 
-  const hudOpacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     Animated.timing(hudOpacity, {
       toValue: hudVisible ? 1 : 0,
-      duration: 300,
+      duration: 350,
       useNativeDriver: true,
     }).start();
   }, [hudOpacity, hudVisible]);
 
+  const progressHeight = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['8%', '100%'],
+  });
+
+  const ambientStyle = Platform.OS === 'web'
+    ? webAmbientStyle(theme, pointer)
+    : { backgroundColor: '#030303' };
+
+  const orbAX = mixPointer(25, pointer.x, 30);
+  const orbAY = mixPointer(20, pointer.y, 25);
+  const orbBX = mixPointer(75, pointer.x, 25);
+  const orbBY = mixPointer(70, pointer.y, 22);
+
+  const { screenH } = getWatchScreenSize(width, height);
+  const cardInset = Math.max(12, bottomInset * 0.35);
+
+  const prevItem = itemIdx > 0 ? items[itemIdx - 1] : null;
+  const nextItem = itemIdx < items.length - 1 ? items[itemIdx + 1] : null;
+  const prevLane = laneIdx > 0 ? lanes[laneIdx - 1] : null;
+  const nextLane = laneIdx < lanes.length - 1 ? lanes[laneIdx + 1] : null;
+  const prevLaneTheme = prevLane ? getLaneTheme(prevLane.id) : null;
+  const nextLaneTheme = nextLane ? getLaneTheme(nextLane.id) : null;
+  const prevLaneItem = laneItemAt(lanes, laneIdx - 1, itemIdx);
+  const nextLaneItem = laneItemAt(lanes, laneIdx + 1, itemIdx);
+
   if (loading && posts.length === 0) {
     return (
-      <View style={[styles.center, { height }]}>
-        <ActivityIndicator color={Colors.red} />
+      <View style={[styles.center, { height }, ambientStyle]}>
+        <ActivityIndicator color={theme.accent} />
       </View>
     );
   }
 
   if (!item) {
     return (
-      <View style={[styles.center, { height }]}>
-        <Text style={styles.empty}>No content in {lane?.label ?? 'Feed'}</Text>
+      <View style={[styles.center, { height }, ambientStyle]}>
+        <Text style={[styles.empty, { color: theme.accent }]}>{lane?.label ?? 'Feed'}</Text>
+        <Text style={styles.emptySub}>Nothing here yet</Text>
       </View>
     );
   }
 
+
   return (
     <View
-      style={[styles.container, { height }]}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      style={[styles.container, { height }, ambientStyle]}
+      {...panResponder.panHandlers}
+      {...(Platform.OS === 'web' ? {
+        onMouseMove: (e: any) => {
+          const rect = e.currentTarget?.getBoundingClientRect?.();
+          if (!rect) return;
+          setPointer({
+            x: (e.clientX - rect.left) / rect.width,
+            y: (e.clientY - rect.top) / rect.height,
+          });
+        },
+      } : {})}
     >
+      {Platform.OS !== 'web' && (
+        <>
+          <View style={[styles.orb, styles.orbA, {
+            backgroundColor: theme.ambientA,
+            left: `${orbAX}%`,
+            top: `${orbAY}%`,
+          }]} />
+          <View style={[styles.orb, styles.orbB, {
+            backgroundColor: theme.ambientB,
+            left: `${orbBX}%`,
+            top: `${orbBY}%`,
+          }]} />
+        </>
+      )}
+
       <Animated.View
         style={[
           styles.content,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
+            transform: [
+              { translateX: dragX },
+              { translateY: Animated.add(slideAnim, dragY) },
+              { scale: scaleAnim },
+            ],
           },
         ]}
       >
-        {item.type === 'ad' ? (
-          <AdPlaceholder
-            ad={item.ad}
-            height={height}
-            onPress={() =>
-              analytics.track('ad_click', {
-                ad_id: item.ad.id,
-                brand: item.ad.brand,
-                placement: 'feed_scroll',
-              })
-            }
-          />
-        ) : item.post.media_type === 'text' || item.post.category === 'advice' ? (
-          <ThreadSlide
-            post={item.post}
-            height={height}
-            bottomInset={bottomInset}
-            onLike={() => onLike(item.post.id)}
-            onComment={() => onComment(item.post.id)}
-          />
-        ) : (
-          <VideoCard
-            post={item.post}
-            index={item.postIndex}
-            height={height}
-            bottomInset={bottomInset}
-            immersive
-            onLike={() => onLike(item.post.id)}
-            onComment={() => onComment(item.post.id)}
-          />
-        )}
-      </Animated.View>
-
-      <Animated.View style={[styles.hud, { opacity: hudOpacity }]} pointerEvents="none">
-        <Text style={styles.brand}>{APP_NAME}</Text>
-        <View style={styles.laneRow}>
-          {lanes.map((l, i) => (
-            <Text key={l.id} style={[styles.laneChip, i === laneIdx && styles.laneChipActive]}>
-              {l.label}
-            </Text>
-          ))}
-        </View>
+        <WatchFocusFrame
+          width={width}
+          height={height}
+          theme={theme}
+          lanes={lanes}
+          laneIdx={laneIdx}
+          itemIdx={itemIdx}
+          itemCount={items.length}
+          prevItem={prevItem}
+          nextItem={nextItem}
+          prevLaneItem={prevLaneItem}
+          nextLaneItem={nextLaneItem}
+          prevLaneTheme={prevLaneTheme}
+          nextLaneTheme={nextLaneTheme}
+          prevLaneLabel={prevLane?.label}
+          nextLaneLabel={nextLane?.label}
+          hudOpacity={hudOpacity}
+        >
+          {item.type === 'ad' ? (
+            <AdPlaceholder
+              ad={item.ad}
+              height={screenH}
+              onPress={() =>
+                analytics.track('ad_click', {
+                  ad_id: item.ad.id,
+                  brand: item.ad.brand,
+                  placement: 'feed_scroll',
+                })
+              }
+            />
+          ) : item.post.media_type === 'text' || item.post.category === 'advice' ? (
+            <ThreadSlide
+              post={item.post}
+              height={screenH}
+              bottomInset={cardInset}
+              theme={theme}
+              onLike={() => onLike(item.post.id)}
+              onComment={() => onComment(item.post.id)}
+            />
+          ) : (
+            <VideoCard
+              post={item.post}
+              index={item.postIndex}
+              height={screenH}
+              bottomInset={cardInset}
+              immersive
+              onLike={() => onLike(item.post.id)}
+              onComment={() => onComment(item.post.id)}
+            />
+          )}
+        </WatchFocusFrame>
       </Animated.View>
 
       <View style={styles.progressRail} pointerEvents="none">
-        <View style={[styles.progressFill, { height: `${progress * 100}%` }]} />
+        <Animated.View
+          style={[
+            styles.progressFill,
+            {
+              height: progressHeight,
+              backgroundColor: theme.accent,
+              shadowColor: theme.accent,
+            },
+          ]}
+        />
       </View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.themePulse,
+          {
+            backgroundColor: theme.accent,
+            opacity: themeBlend.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.12],
+            }),
+          },
+        ]}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: '#000', overflow: 'hidden' },
+  container: { overflow: 'hidden' },
   content: { flex: 1 },
-  center: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' },
-  empty: { color: Colors.textMuted, fontSize: 15 },
-  hud: {
+  center: { alignItems: 'center', justifyContent: 'center' },
+  empty: { fontSize: 18, fontWeight: '800', letterSpacing: 1 },
+  emptySub: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.xs },
+  orb: {
     position: 'absolute',
-    top: Platform.OS === 'web' ? Spacing.lg : Spacing.xl,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 20,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    marginLeft: -140,
+    marginTop: -140,
+    opacity: 0.55,
   },
-  brand: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: Spacing.sm,
-  },
-  laneRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
-  },
-  laneChip: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  laneChipActive: {
-    color: Colors.textPrimary,
-    fontWeight: '800',
-  },
+  orbA: { opacity: 0.5 },
+  orbB: { opacity: 0.45 },
   progressRail: {
     position: 'absolute',
-    left: 4,
-    top: '20%',
-    bottom: '20%',
-    width: 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 1,
+    left: 6,
+    top: '18%',
+    bottom: '18%',
+    width: 3,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 2,
     zIndex: 10,
+    overflow: 'hidden',
   },
   progressFill: {
-    width: '100%',
-    backgroundColor: Colors.red,
-    borderRadius: 1,
-    opacity: 0.7,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderRadius: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+  },
+  themePulse: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
   },
 });
