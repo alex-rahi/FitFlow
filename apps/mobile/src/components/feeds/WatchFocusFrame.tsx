@@ -38,6 +38,10 @@ interface Props {
   nextLaneLabel?: string;
   hudOpacity: Animated.Value;
   topInterests?: { topic: string; label: string; score: number }[];
+  dragOffsetX?: Animated.Value;
+  dragOffsetY?: Animated.Value;
+  pageW?: number;
+  pageH?: number;
   children: ReactNode;
 }
 
@@ -67,9 +71,34 @@ export function WatchFocusFrame({
   nextLaneLabel,
   hudOpacity,
   topInterests = [],
+  dragOffsetX,
+  dragOffsetY,
+  pageW = 1,
+  pageH = 1,
   children,
 }: Props) {
   const { screenH, screenW, frameW } = getWatchScreenSize(width, height);
+
+  const nextPeekScale = dragOffsetY?.interpolate({
+    inputRange: [-pageH, 0],
+    outputRange: [1.12, 1],
+    extrapolate: 'clamp',
+  });
+  const prevPeekScale = dragOffsetY?.interpolate({
+    inputRange: [0, pageH],
+    outputRange: [1, 1.12],
+    extrapolate: 'clamp',
+  });
+  const nextLanePeekScale = dragOffsetX?.interpolate({
+    inputRange: [-pageW, 0],
+    outputRange: [1.1, 1],
+    extrapolate: 'clamp',
+  });
+  const prevLanePeekScale = dragOffsetX?.interpolate({
+    inputRange: [0, pageW],
+    outputRange: [1, 1.1],
+    extrapolate: 'clamp',
+  });
 
   return (
     <View style={[styles.chassis, { height, width }]}>
@@ -116,16 +145,16 @@ export function WatchFocusFrame({
             </Animated.View>
           ) : null}
 
-          <View style={styles.peekTop}>
+          <Animated.View style={[styles.peekTop, dragOffsetY && nextPeekScale ? { transform: [{ scaleY: nextPeekScale }] } : null]}>
             {nextItem ? (
               <PeekPreview item={nextItem} theme={theme} variant="vertical" />
             ) : (
               <View style={styles.peekSpacer} />
             )}
-          </View>
+          </Animated.View>
 
           <View style={[styles.focusRow, { height: screenH }]}>
-            <View style={styles.peekSide}>
+            <Animated.View style={[styles.peekSide, dragOffsetX && prevLanePeekScale ? { transform: [{ scale: prevLanePeekScale }] } : null]}>
               {prevLaneTheme ? (
                 <PeekPreview
                   item={prevLaneItem}
@@ -136,7 +165,7 @@ export function WatchFocusFrame({
               ) : (
                 <View style={styles.peekSideSpacer} />
               )}
-            </View>
+            </Animated.View>
 
             <View
               style={[
@@ -165,7 +194,7 @@ export function WatchFocusFrame({
               </View>
             </View>
 
-            <View style={styles.peekSide}>
+            <Animated.View style={[styles.peekSide, dragOffsetX && nextLanePeekScale ? { transform: [{ scale: nextLanePeekScale }] } : null]}>
               {nextLaneTheme ? (
                 <PeekPreview
                   item={nextLaneItem}
@@ -176,16 +205,16 @@ export function WatchFocusFrame({
               ) : (
                 <View style={styles.peekSideSpacer} />
               )}
-            </View>
+            </Animated.View>
           </View>
 
-          <View style={styles.peekBottom}>
+          <Animated.View style={[styles.peekBottom, dragOffsetY && prevPeekScale ? { transform: [{ scaleY: prevPeekScale }] } : null]}>
             {prevItem ? (
               <PeekPreview item={prevItem} theme={theme} variant="vertical" />
             ) : (
               <View style={styles.peekSpacer} />
             )}
-          </View>
+          </Animated.View>
         </View>
       </View>
 
