@@ -4,11 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
-import { CategoryPicker } from '../../src/components/CategoryPicker';
+import { UploadViewPicker } from '../../src/components/UploadViewPicker';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
-import { UploadCategoryId } from '../../src/constants/categories';
+import {
+  FeedViewId,
+  PostCategoryId,
+  getFeedViewLabel,
+  getUploadOptionForView,
+} from '../../src/constants/categories';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
@@ -25,11 +30,19 @@ export default function UploadScreen() {
   useScreenAnalytics('upload');
   const { session } = useAuth();
   const [caption, setCaption] = useState('');
-  const [category, setCategory] = useState<UploadCategoryId>('meal_prep');
+  const [view, setView] = useState<FeedViewId>('feed');
+  const [category, setCategory] = useState<PostCategoryId>('prs');
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const uploadOption = getUploadOptionForView(view);
+
+  const handleSelectView = (nextView: FeedViewId, nextCategory: PostCategoryId) => {
+    setView(nextView);
+    setCategory(nextCategory);
+  };
 
   const pickVideo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -84,11 +97,12 @@ export default function UploadScreen() {
       setStatus('Confirming upload...');
       await api.confirmUpload(post.id);
 
-      analytics.track('upload_complete', { post_id: post.id, category });
+      analytics.track('upload_complete', { post_id: post.id, category, feed_view: view });
 
+      const destination = getFeedViewLabel(view);
       const successMessage = USE_PLACEHOLDERS
-        ? 'Demo upload complete. In production, your video would enter the AI moderation pipeline.'
-        : 'Your video was uploaded and is being processed. It will appear in your feed once approved.';
+        ? `Demo upload complete. In production, your post would appear in ${destination} after approval.`
+        : `Your post was uploaded and will appear in ${destination} once approved.`;
       setStatus('');
       setFeedback({ type: 'success', message: successMessage });
       notify('Success', successMessage);
@@ -106,8 +120,8 @@ export default function UploadScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Upload Workout</Text>
-      <Text style={styles.subtitle}>Share your training with the community</Text>
+      <Text style={styles.title}>Upload</Text>
+      <Text style={styles.subtitle}>Share a workout, recipe, or community post</Text>
 
       <View style={styles.preview}>
         {videoUri ? (
@@ -119,13 +133,17 @@ export default function UploadScreen() {
 
       <Input
         label="Caption"
-        placeholder="Describe your workout..."
+        placeholder={uploadOption.captionPlaceholder}
         value={caption}
         onChangeText={setCaption}
         multiline
       />
 
-      <CategoryPicker selected={category} onSelect={setCategory} />
+      <UploadViewPicker
+        selectedView={view}
+        selectedCategory={category}
+        onSelectView={handleSelectView}
+      />
 
       {!USE_PLACEHOLDERS && !session && (
         <Text style={styles.warning}>

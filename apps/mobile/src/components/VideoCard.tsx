@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { createElement } from 'react';
-import { getCategoryLabel } from '../constants/categories';
+import { getFeedViewLabelForPost } from '../constants/categories';
 import { resolvePlaybackUrl } from '../lib/videoUrl';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
 
@@ -50,7 +50,7 @@ function WebVideo({ uri }: { uri: string }) {
 }
 
 export function VideoCard({ post, index, onLike, onComment, height }: VideoCardProps) {
-  const categoryLabel = getCategoryLabel(post.category);
+  const viewLabel = getFeedViewLabelForPost(post.category);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS);
 
@@ -93,9 +93,9 @@ export function VideoCard({ post, index, onLike, onComment, height }: VideoCardP
       </View>
 
       <View style={styles.overlay} pointerEvents="box-none">
-        {categoryLabel && (
+        {viewLabel && (
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{categoryLabel}</Text>
+            <Text style={styles.categoryText}>{viewLabel}</Text>
           </View>
         )}
         <View style={styles.sideActions}>

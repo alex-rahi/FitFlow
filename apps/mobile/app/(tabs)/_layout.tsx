@@ -16,7 +16,7 @@ export default function TabLayout() {
       tabBarInactiveTintColor: Colors.textMuted,
       tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
     }}>
-      <Tabs.Screen name="feed" options={{ title: 'Feed', tabBarIcon: () => null }} />
+      <Tabs.Screen name="feed" options={{ title: 'Home', tabBarIcon: () => null }} />
       <Tabs.Screen name="search" options={{ title: 'Search', tabBarIcon: () => null }} />
       <Tabs.Screen name="upload" options={{ title: 'Upload', tabBarIcon: () => null }} />
       <Tabs.Screen name="notifications" options={{ title: 'Alerts', tabBarIcon: () => null }} />

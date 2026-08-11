@@ -5,9 +5,9 @@ import { Button } from '../../src/components/Button';
 import { Colors, Radius, Spacing } from '../../src/constants/theme';
 
 const FEATURES = [
-  { icon: '📹', label: 'Upload' },
-  { icon: '💪', label: 'Workouts' },
-  { icon: '👥', label: 'Community' },
+  { icon: '📹', label: 'Feed' },
+  { icon: '🥗', label: 'Recipes' },
+  { icon: '💬', label: 'Community' },
   { icon: '📊', label: 'Progress' },
 ];
 

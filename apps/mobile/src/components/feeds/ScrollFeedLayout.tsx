@@ -39,6 +39,7 @@ export function ScrollFeedLayout({
 
     analytics.track('video_impression', {
       post_id: item.post.id,
+      feed_view: 'feed',
       category: item.post.category,
       index: item.postIndex,
     });

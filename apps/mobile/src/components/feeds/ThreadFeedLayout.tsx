@@ -182,7 +182,7 @@ export function ThreadFeedLayout({
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={
         <View style={styles.communityHeader}>
-          <Text style={styles.communityTitle}>Advice Community</Text>
+          <Text style={styles.communityTitle}>Community</Text>
           <Text style={styles.communitySub}>Threads, form checks, and coaching talk</Text>
         </View>
       }

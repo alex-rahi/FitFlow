@@ -65,7 +65,7 @@ export default function SettingsScreen() {
           {analytics.getTotalEvents() === 0 && (
             <View style={styles.analyticsHint}>
               <Text style={styles.analyticsHintText}>
-                Browse the feed, scroll videos, or upload to populate session analytics.
+                Browse Home, Recipes, and Community to populate session analytics.
               </Text>
             </View>
           )}
