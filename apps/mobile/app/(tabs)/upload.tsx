@@ -94,6 +94,11 @@ export default function UploadScreen() {
     setUploading(true);
     setError('');
     setStatus('Publishing...');
+    analytics.track('upload_start', {
+      screen: 'upload',
+      category,
+      media_type: mediaType,
+    });
     try {
       const destination = getUploadDestinationForCategory(category, mediaType);
       const post = await api.createPost(
@@ -113,17 +118,23 @@ export default function UploadScreen() {
           await uploadVideoFile(storage_path, mediaUri);
           await api.confirmUpload(post.id);
         }
+        analytics.track('upload_media_complete', {
+          screen: 'upload',
+          post_id: post.id,
+          category,
+          media_type: mediaType,
+        });
       }
 
       setStatus('Moderating...');
       const moderation = await api.runYoloModeration(post.id);
 
-      analytics.track('upload_complete', {
+      analytics.trackModerationOutcome(moderation.status, {
+        screen: 'upload',
         post_id: post.id,
         category,
         feed_view: destination,
         media_type: mediaType,
-        moderation_status: moderation.status,
       });
 
       if (moderation.status === 'pending_review') {

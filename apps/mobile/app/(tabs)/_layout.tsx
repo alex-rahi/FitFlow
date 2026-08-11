@@ -1,6 +1,8 @@
-import { StyleSheet, View, Platform } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Colors } from '../../src/constants/theme';
+import { analytics } from '../../src/lib/analytics';
 
 const TAB_BAR = {
   backgroundColor: Colors.matteBlack,
@@ -31,6 +33,10 @@ const IMMERSIVE_TAB_BAR = {
 };
 
 export default function TabLayout() {
+  useEffect(() => {
+    void analytics.hydrate();
+  }, []);
+
   return (
     <Tabs
       initialRouteName="feed"
