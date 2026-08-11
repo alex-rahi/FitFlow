@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { useAuth } from '../../src/context/AuthContext';
-import { Colors, Spacing, USE_PLACEHOLDERS } from '../../src/constants/theme';
+import { Colors, Spacing, USE_PLACEHOLDERS, APP_NAME } from '../../src/constants/theme';
 import { supabase } from '../../src/lib/supabase';
 
 export default function SignupScreen() {
@@ -22,11 +22,11 @@ export default function SignupScreen() {
     try {
       await signUp(email, password, username);
       if (USE_PLACEHOLDERS) {
-        router.replace('/(tabs)/feed');
+        router.replace('/(tabs)/recipes');
       } else {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
-          router.replace('/(tabs)/feed');
+          router.replace('/(tabs)/recipes');
         } else {
           router.replace('/(auth)/verify-email');
         }
@@ -43,7 +43,7 @@ export default function SignupScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.inner}>
         <View style={styles.header}>
           <Text style={styles.title}>Create account</Text>
-          <Text style={styles.subtitle}>Join the GymTok community</Text>
+          <Text style={styles.subtitle}>Join the {APP_NAME} community</Text>
         </View>
 
         <View style={styles.form}>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator, Image } from 'react-native';
 import { createElement } from 'react';
-import { getFeedViewLabelForPost } from '../constants/categories';
+import { getCategoryLabel } from '../constants/categories';
 import { resolvePlaybackUrl } from '../lib/videoUrl';
 import { Colors, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
 
@@ -52,7 +52,7 @@ function WebVideo({ uri }: { uri: string }) {
 }
 
 export function VideoCard({ post, index, onLike, onComment, height }: VideoCardProps) {
-  const viewLabel = getFeedViewLabelForPost(post.category, post.media_type);
+  const viewLabel = getCategoryLabel(post.category);
   const isPhoto = post.media_type === 'photo';
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS && !isPhoto);

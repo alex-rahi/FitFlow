@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
-import { Colors, Spacing, USE_PLACEHOLDERS } from '../src/constants/theme';
+import { APP_MONOGRAM, APP_NAME, APP_TAGLINE, Colors, Spacing, isDemoMode } from '../src/constants/theme';
 
 export default function SplashScreen() {
   const { session, loading } = useAuth();
@@ -12,7 +12,7 @@ export default function SplashScreen() {
     if (loading) return;
     const timer = setTimeout(() => {
       if (session) {
-        router.replace('/(tabs)/feed');
+        router.replace('/(tabs)/recipes');
       } else {
         router.replace('/(auth)/welcome');
       }
@@ -24,11 +24,11 @@ export default function SplashScreen() {
     <View style={styles.container}>
       <View style={styles.overlay}>
         <View style={styles.monogram}>
-          <Text style={styles.monogramText}>GT</Text>
+          <Text style={styles.monogramText}>{APP_MONOGRAM}</Text>
         </View>
-        <Text style={styles.title}>GymTok</Text>
-        <Text style={styles.tagline}>Train. Share. Inspire.</Text>
-        {USE_PLACEHOLDERS && (
+        <Text style={styles.title}>{APP_NAME}</Text>
+        <Text style={styles.tagline}>{APP_TAGLINE}</Text>
+        {isDemoMode() && (
           <Text style={styles.demoHint}>Demo mode — log in with any email</Text>
         )}
         <ActivityIndicator color={Colors.red} style={styles.loader} />

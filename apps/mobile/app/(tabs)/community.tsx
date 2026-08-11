@@ -77,8 +77,8 @@ export default function CommunityScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Community</Text>
-        <Text style={styles.subtitle}>Thread-style coaching, form checks, and Q&A</Text>
+        <Text style={styles.title}>Kitchen</Text>
+        <Text style={styles.subtitle}>Cooking tips, ingredient swaps, and meal-planning threads</Text>
       </View>
       {loading ? (
         <View style={styles.center}>
@@ -86,8 +86,8 @@ export default function CommunityScreen() {
         </View>
       ) : posts.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyTitle}>No threads yet</Text>
-          <Text style={styles.emptySubtitle}>Start a community thread from Upload</Text>
+          <Text style={styles.emptyTitle}>No kitchen threads yet</Text>
+          <Text style={styles.emptySubtitle}>Start a thread from Upload → Kitchen thread</Text>
         </View>
       ) : (
         <ThreadFeedLayout

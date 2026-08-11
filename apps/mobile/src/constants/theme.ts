@@ -1,3 +1,6 @@
+export const APP_NAME = 'RecipeTok';
+export const APP_TAGLINE = 'Cook. Share. Savor.';
+export const APP_MONOGRAM = 'RT';
 export const PLACEHOLDER_SUPABASE_URL = 'https://placeholder.supabase.co';
 export const PLACEHOLDER_ANON_KEY = 'placeholder-anon-key-replace-me';
 
@@ -5,6 +8,17 @@ export const USE_PLACEHOLDERS =
   process.env.EXPO_PUBLIC_USE_PLACEHOLDERS === 'true' ||
   !process.env.EXPO_PUBLIC_SUPABASE_URL ||
   process.env.EXPO_PUBLIC_SUPABASE_URL.includes('placeholder');
+
+const DEMO_HOST_PATTERN = /gym-tok-demo/i;
+
+/** Runtime demo detection — Vercel preview builds may bake in live env vars. */
+export function isDemoMode(): boolean {
+  if (USE_PLACEHOLDERS) return true;
+  if (typeof window !== 'undefined' && DEMO_HOST_PATTERN.test(window.location.hostname)) {
+    return true;
+  }
+  return false;
+}
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? PLACEHOLDER_SUPABASE_URL;
@@ -14,10 +28,10 @@ export const PLACEHOLDER_USER_ID = '00000000-0000-4000-8000-000000000001';
 
 export const PLACEHOLDER_PROFILE = {
   id: PLACEHOLDER_USER_ID,
-  username: 'alex_lifts',
-  display_name: 'Alex Lifts',
+  username: 'alex_cooks',
+  display_name: 'Alex Cooks',
   avatar_url: null,
-  bio: 'Placeholder profile — swap in real Supabase credentials to go live.',
+  bio: 'High-protein meal prep · 30-min weeknight dinners',
   trust_level: 85,
   follower_count: 1284,
   following_count: 312,
@@ -29,15 +43,15 @@ export const PLACEHOLDER_POSTS = [
   {
     id: '10000000-0000-4000-8000-000000000001',
     user_id: PLACEHOLDER_USER_ID,
-    category: 'prs',
-    caption: 'Heavy deadlift PR — 405 lbs 💪 Form check welcome!',
+    category: 'meal_prep',
+    caption: 'One-pan lemon garlic salmon — 35g protein, 20 min 🐟',
     thumbnail_url: null,
     status: 'published',
     like_count: 842,
     comment_count: 56,
     view_count: 12400,
     created_at: '2025-07-28T18:30:00Z',
-    author: { username: 'alex_lifts', display_name: 'Alex Lifts' },
+    author: { username: 'alex_cooks', display_name: 'Alex Cooks' },
   },
   {
     id: '10000000-0000-4000-8000-000000000002',
@@ -50,7 +64,7 @@ export const PLACEHOLDER_POSTS = [
     comment_count: 89,
     view_count: 18700,
     created_at: '2025-07-27T09:15:00Z',
-    author: { username: 'fitness_jade', display_name: 'Jade Fitness' },
+    author: { username: 'jade_kitchen', display_name: 'Jade Kitchen' },
   },
   {
     id: '10000000-0000-4000-8000-000000000003',
@@ -63,20 +77,20 @@ export const PLACEHOLDER_POSTS = [
     comment_count: 34,
     view_count: 9200,
     created_at: '2025-07-26T20:00:00Z',
-    author: { username: 'bench_king', display_name: 'Bench King' },
+    author: { username: 'macro_mike', display_name: 'Macro Mike' },
   },
   {
     id: '10000000-0000-4000-8000-000000000004',
     user_id: '00000000-0000-4000-8000-000000000002',
     category: 'advice',
-    caption: 'Deadlift form tips — bracing, bar path, and common mistakes',
+    caption: 'Best Greek yogurt swap for sour cream in dips?',
     thumbnail_url: null,
     status: 'published',
     like_count: 2104,
     comment_count: 3,
     view_count: 28400,
     created_at: '2025-07-25T16:45:00Z',
-    author: { username: 'fitness_jade', display_name: 'Jade Fitness' },
+    author: { username: 'jade_kitchen', display_name: 'Jade Kitchen' },
   },
   {
     id: '10000000-0000-4000-8000-000000000005',
@@ -89,20 +103,20 @@ export const PLACEHOLDER_POSTS = [
     comment_count: 318,
     view_count: 62100,
     created_at: '2025-07-24T11:00:00Z',
-    author: { username: 'alex_lifts', display_name: 'Alex Lifts' },
+    author: { username: 'alex_cooks', display_name: 'Alex Cooks' },
   },
   {
     id: '10000000-0000-4000-8000-000000000006',
     user_id: '00000000-0000-4000-8000-000000000003',
-    category: 'prs',
-    caption: '315 squat PR — finally hit it after 8 weeks of prep',
+    category: 'nutrition',
+    caption: 'High-protein smoothie bowl — 40g protein under 400 cal',
     thumbnail_url: null,
     status: 'published',
     like_count: 934,
     comment_count: 67,
     view_count: 15800,
     created_at: '2025-07-23T19:30:00Z',
-    author: { username: 'bench_king', display_name: 'Bench King' },
+    author: { username: 'macro_mike', display_name: 'Macro Mike' },
   },
   {
     id: '10000000-0000-4000-8000-000000000007',
@@ -115,33 +129,33 @@ export const PLACEHOLDER_POSTS = [
     comment_count: 44,
     view_count: 11200,
     created_at: '2025-07-22T14:00:00Z',
-    author: { username: 'fitness_jade', display_name: 'Jade Fitness' },
+    author: { username: 'jade_kitchen', display_name: 'Jade Kitchen' },
   },
   {
     id: '10000000-0000-4000-8000-000000000008',
     user_id: PLACEHOLDER_USER_ID,
     category: 'advice',
-    caption: 'Squat depth checklist — 4 cues before every set',
+    caption: 'How do you keep chicken breast from drying out in meal prep?',
     thumbnail_url: null,
     status: 'published',
     like_count: 1567,
     comment_count: 2,
     view_count: 22100,
     created_at: '2025-07-21T10:30:00Z',
-    author: { username: 'alex_lifts', display_name: 'Alex Lifts' },
+    author: { username: 'alex_cooks', display_name: 'Alex Cooks' },
   },
   {
     id: '10000000-0000-4000-8000-000000000009',
     user_id: '00000000-0000-4000-8000-000000000003',
     category: 'advice',
-    caption: 'Recovery basics — sleep, hydration, and deload weeks',
+    caption: 'Favorite high-protein pantry staples under $5?',
     thumbnail_url: null,
     status: 'published',
     like_count: 743,
     comment_count: 1,
     view_count: 9800,
     created_at: '2025-07-20T08:00:00Z',
-    author: { username: 'bench_king', display_name: 'Bench King' },
+    author: { username: 'macro_mike', display_name: 'Macro Mike' },
   },
 ];
 
@@ -159,7 +173,7 @@ export const PLACEHOLDER_RECIPE_PHOTOS = [
     comment_count: 22,
     view_count: 4100,
     created_at: '2025-07-29T12:00:00Z',
-    author: { username: 'fitness_jade', display_name: 'Jade Fitness' },
+    author: { username: 'jade_kitchen', display_name: 'Jade Kitchen' },
   },
   {
     id: '10000000-0000-4000-8000-000000000011',
@@ -174,7 +188,7 @@ export const PLACEHOLDER_RECIPE_PHOTOS = [
     comment_count: 18,
     view_count: 3200,
     created_at: '2025-07-28T08:30:00Z',
-    author: { username: 'alex_lifts', display_name: 'Alex Lifts' },
+    author: { username: 'alex_cooks', display_name: 'Alex Cooks' },
   },
   {
     id: '10000000-0000-4000-8000-000000000012',
@@ -189,7 +203,7 @@ export const PLACEHOLDER_RECIPE_PHOTOS = [
     comment_count: 41,
     view_count: 5600,
     created_at: '2025-07-27T17:00:00Z',
-    author: { username: 'bench_king', display_name: 'Bench King' },
+    author: { username: 'macro_mike', display_name: 'Macro Mike' },
   },
 ];
 
@@ -197,20 +211,20 @@ export const PLACEHOLDER_USERS = [
   PLACEHOLDER_PROFILE,
   {
     id: '00000000-0000-4000-8000-000000000002',
-    username: 'fitness_jade',
-    display_name: 'Jade Fitness',
+    username: 'jade_kitchen',
+    display_name: 'Jade Kitchen',
     avatar_url: null,
-    bio: 'Certified trainer · HIIT & strength',
+    bio: 'Meal prep Sundays · macro-friendly comfort food',
     follower_count: 8420,
     following_count: 210,
     post_count: 156,
   },
   {
     id: '00000000-0000-4000-8000-000000000003',
-    username: 'bench_king',
-    display_name: 'Bench King',
+    username: 'macro_mike',
+    display_name: 'Macro Mike',
     avatar_url: null,
-    bio: 'Powerlifting · 405 bench goal',
+    bio: 'Nutrition breakdowns · budget-friendly protein',
     follower_count: 3200,
     following_count: 89,
     post_count: 72,
@@ -221,15 +235,15 @@ export const PLACEHOLDER_NOTIFICATIONS = [
   {
     id: '40000000-0000-4000-8000-000000000001',
     type: 'like',
-    title: 'fitness_jade liked your video',
-    body: 'Heavy deadlift PR — 405 lbs 💪',
+    title: 'jade_kitchen liked your recipe',
+    body: 'One-pan lemon garlic salmon — 35g protein',
     read: false,
     created_at: '2025-07-30T14:00:00Z',
   },
   {
     id: '40000000-0000-4000-8000-000000000002',
     type: 'follow',
-    title: 'bench_king started following you',
+    title: 'macro_mike started following you',
     body: null,
     read: false,
     created_at: '2025-07-30T12:30:00Z',
@@ -237,8 +251,8 @@ export const PLACEHOLDER_NOTIFICATIONS = [
   {
     id: '40000000-0000-4000-8000-000000000003',
     type: 'comment',
-    title: 'fitness_jade commented on your video',
-    body: 'Great form on that deadlift! 💪',
+    title: 'jade_kitchen commented on your recipe',
+    body: 'Saving this for Sunday prep — looks amazing!',
     read: true,
     created_at: '2025-07-29T18:00:00Z',
   },

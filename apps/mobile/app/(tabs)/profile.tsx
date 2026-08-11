@@ -18,7 +18,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<VideoPost[]>([]);
-  const [view, setView] = useState<FeedViewId>('feed');
+  const [view, setView] = useState<FeedViewId>('recipes');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

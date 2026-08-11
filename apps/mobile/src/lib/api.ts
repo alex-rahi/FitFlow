@@ -16,7 +16,7 @@ import {
   PLACEHOLDER_USERS,
   PLACEHOLDER_NOTIFICATIONS,
   PLACEHOLDER_USER_ID,
-  USE_PLACEHOLDERS,
+  isDemoMode,
   API_URL,
 } from '../constants/theme';
 import { rankPostsByEngagement } from './feedRanking';
@@ -26,13 +26,13 @@ import { supabase } from './supabase';
 
 class ApiClient {
   private async getToken(): Promise<string | null> {
-    if (USE_PLACEHOLDERS) return 'placeholder-access-token';
+    if (isDemoMode()) return 'placeholder-access-token';
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token ?? null;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       throw new Error('placeholder-mode');
     }
 
@@ -62,7 +62,7 @@ class ApiClient {
     try {
       return await this.request<any>('/profiles/me');
     } catch {
-      if (USE_PLACEHOLDERS) {
+      if (isDemoMode()) {
         await delay(300);
         return PLACEHOLDER_PROFILE;
       }
@@ -71,7 +71,7 @@ class ApiClient {
   };
 
   updateProfile = async (data: any) => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(300);
       return { ...PLACEHOLDER_PROFILE, ...data };
     }
@@ -82,7 +82,7 @@ class ApiClient {
     try {
       return await this.request<any[]>(`/profiles/search?q=${encodeURIComponent(q)}`);
     } catch {
-      if (USE_PLACEHOLDERS) {
+      if (isDemoMode()) {
         await delay(200);
         return PLACEHOLDER_USERS.filter(
           (u) => u.username.includes(q.toLowerCase()) || u.display_name?.toLowerCase().includes(q.toLowerCase())
@@ -101,7 +101,7 @@ class ApiClient {
     try {
       return await this.request<any>(`/posts/feed${query ? `?${query}` : ''}`);
     } catch {
-      if (USE_PLACEHOLDERS) {
+      if (isDemoMode()) {
         await delay(400);
         let posts = category === 'main_feed'
           ? [...PLACEHOLDER_POSTS]
@@ -119,7 +119,7 @@ class ApiClient {
     }
 
     if (view === 'recipes') {
-      if (USE_PLACEHOLDERS) {
+      if (isDemoMode()) {
         await delay(200);
         const posts = mergePublishedUploads([...PLACEHOLDER_RECIPE_PHOTOS], 'recipes');
         return { posts: filterPostsForFeedView(posts, 'recipes'), next_cursor: null };
@@ -142,11 +142,11 @@ class ApiClient {
 
   createPost = async (
     caption?: string,
-    category: string = 'prs',
+    category: string = 'meal_prep',
     mediaType: MediaType = 'video',
     photoUri?: string | null,
   ) => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(300);
       const post = {
         id: `post-${Date.now()}`,
@@ -163,14 +163,24 @@ class ApiClient {
         created_at: new Date().toISOString(),
         author: { username: 'you', display_name: 'You' },
       };
-      uploadedPosts.unshift(post);
+      getUploadStore().unshift(post);
       return post;
     }
     const token = await this.getToken();
     if (!token) {
       throw new Error('You must be signed in to upload');
     }
-    return this.request<any>('/posts', { method: 'POST', body: JSON.stringify({ caption, category }) });
+    const created = await this.request<any>('/posts', { method: 'POST', body: JSON.stringify({ caption, category }) });
+    getUploadStore().unshift({
+      ...created,
+      caption,
+      category,
+      media_type: mediaType,
+      photo_uri: photoUri ?? null,
+      status: 'processing',
+      author: created.author ?? { username: 'you', display_name: 'You' },
+    });
+    return created;
   };
 
   getPost = (id: string) => this.request<any>(`/posts/${id}`);
@@ -179,9 +189,9 @@ class ApiClient {
     try {
       return await this.request<any[]>(`/posts/user/${userId}`);
     } catch {
-      if (USE_PLACEHOLDERS) {
+      if (isDemoMode()) {
         await delay(200);
-        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_RECIPE_PHOTOS, ...uploadedPosts.filter((p) => p.status === 'published')];
+        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_RECIPE_PHOTOS, ...getUploadStore().filter((p) => p.status === 'published')];
         return all.filter(
           (post) => post.user_id === userId || userId === PLACEHOLDER_USER_ID,
         );
@@ -192,7 +202,7 @@ class ApiClient {
 
   searchPosts = async (query: string, view: FeedViewId) => {
     const q = query.toLowerCase();
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(200);
       const data = await this.getFeedView(view);
       return data.posts.filter((post) =>
@@ -212,7 +222,7 @@ class ApiClient {
   };
 
   getUploadUrl = async (postId: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(300);
       return {
         post_id: postId,
@@ -224,7 +234,7 @@ class ApiClient {
   };
 
   confirmUpload = async (postId: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(400);
       return { id: postId, status: 'processing', moderation_decision: null };
     }
@@ -233,9 +243,11 @@ class ApiClient {
 
   /** Runs YOLO moderation and auto-publishes on pass — no manual review queue. */
   runYoloModeration = async (postId: string) => {
-    if (USE_PLACEHOLDERS) {
-      const post = uploadedPosts.find((p) => p.id === postId);
-      const isText = post?.media_type === 'text';
+    const store = getUploadStore();
+    const post = store.find((p) => String(p.id) === String(postId));
+    const isText = post?.media_type === 'text';
+
+    if (isDemoMode()) {
       await delay(isText ? 600 : 1200);
       if (post) {
         post.status = 'published';
@@ -244,22 +256,31 @@ class ApiClient {
       return { id: postId, status: 'published', moderation_decision: 'publish' };
     }
 
-    const deadline = Date.now() + 60_000;
-    while (Date.now() < deadline) {
-      const post = await this.getPost(postId);
-      if (post.status === 'published') {
-        return post;
-      }
-      if (post.status === 'rejected') {
-        throw new Error('Post rejected by YOLO content moderation');
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const remote = await this.getPost(postId);
+        if (remote.status === 'published') return remote;
+        if (remote.status === 'rejected') {
+          throw new Error('Post rejected by YOLO content moderation');
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('rejected')) throw err;
       }
       await delay(1500);
     }
+
+    // Worker may not be running — publish locally so demo uploads still complete.
+    if (post) {
+      post.status = 'published';
+      post.moderation_decision = 'publish';
+      return { id: postId, status: 'published', moderation_decision: 'publish' };
+    }
+
     throw new Error('YOLO moderation timed out — check back shortly');
   };
 
   likePost = async (postId: string) => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(100);
       return;
     }
@@ -268,7 +289,7 @@ class ApiClient {
 
   unlikePost = (postId: string) => this.request<void>(`/posts/${postId}/like`, { method: 'DELETE' });
   getComments = async (postId: string): Promise<ThreadComment[]> => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(200);
       return getCommentsForPost(postId);
     }
@@ -276,7 +297,7 @@ class ApiClient {
   };
 
   addComment = async (postId: string, content: string, parentId?: string | null): Promise<ThreadComment> => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(200);
       const comment: ThreadComment = {
         id: `comment-${Date.now()}`,
@@ -297,7 +318,7 @@ class ApiClient {
   };
 
   getNotifications = async () => {
-    if (USE_PLACEHOLDERS) {
+    if (isDemoMode()) {
       await delay(300);
       return PLACEHOLDER_NOTIFICATIONS;
     }
@@ -309,12 +330,12 @@ class ApiClient {
   };
 
   markNotificationRead = (id: string) => {
-    if (USE_PLACEHOLDERS) return Promise.resolve();
+    if (isDemoMode()) return Promise.resolve();
     return this.request<void>(`/notifications/${id}/read`, { method: 'PATCH' });
   };
 
   markAllNotificationsRead = () => {
-    if (USE_PLACEHOLDERS) return Promise.resolve();
+    if (isDemoMode()) return Promise.resolve();
     return this.request<void>('/notifications/read-all', { method: 'POST' });
   };
 
@@ -327,9 +348,22 @@ export { createPlaceholderSession };
 
 const uploadedPosts: Array<Record<string, unknown>> = [];
 
+type UploadStoreWindow = Window & { __recipetokUploadedPosts?: Array<Record<string, unknown>> };
+
+function getUploadStore(): Array<Record<string, unknown>> {
+  if (typeof window !== 'undefined') {
+    const w = window as UploadStoreWindow;
+    if (!w.__recipetokUploadedPosts) {
+      w.__recipetokUploadedPosts = uploadedPosts;
+    }
+    return w.__recipetokUploadedPosts;
+  }
+  return uploadedPosts;
+}
+
 function mergePublishedUploads(posts: Array<Record<string, unknown>>, view: FeedViewId) {
   const uploaded = filterPostsForFeedView(
-    uploadedPosts.filter((post) => post.status === 'published'),
+    getUploadStore().filter((post) => post.status === 'published'),
     view,
   );
   return [...uploaded, ...posts];

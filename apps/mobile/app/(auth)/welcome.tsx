@@ -2,13 +2,13 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
-import { Colors, Radius, Spacing } from '../../src/constants/theme';
+import { APP_MONOGRAM, APP_NAME, APP_TAGLINE, Colors, Radius, Spacing } from '../../src/constants/theme';
 
 const FEATURES = [
-  { icon: '📹', label: 'Feed' },
   { icon: '🥗', label: 'Recipes' },
-  { icon: '💬', label: 'Community' },
-  { icon: '📊', label: 'Progress' },
+  { icon: '📹', label: 'Watch' },
+  { icon: '🍳', label: 'Kitchen' },
+  { icon: '📸', label: 'Share' },
 ];
 
 export default function WelcomeScreen() {
@@ -20,10 +20,10 @@ export default function WelcomeScreen() {
         <View style={styles.overlay}>
           <View style={styles.brandBlock}>
             <View style={styles.monogram}>
-              <Text style={styles.monogramText}>GT</Text>
+              <Text style={styles.monogramText}>{APP_MONOGRAM}</Text>
             </View>
-            <Text style={styles.title}>GymTok</Text>
-            <Text style={styles.tagline}>Train. Share. Inspire.</Text>
+            <Text style={styles.title}>{APP_NAME}</Text>
+            <Text style={styles.tagline}>{APP_TAGLINE}</Text>
           </View>
 
           <View style={styles.ctaBlock}>

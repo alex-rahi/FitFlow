@@ -184,8 +184,8 @@ export function ThreadFeedLayout({
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={
         <View style={styles.communityHeader}>
-          <Text style={styles.communityTitle}>Community</Text>
-          <Text style={styles.communitySub}>Threads, form checks, and coaching talk</Text>
+          <Text style={styles.communityTitle}>Kitchen</Text>
+          <Text style={styles.communitySub}>Cooking tips, swaps, and meal-planning talk</Text>
         </View>
       }
       renderItem={({ item, index }) => (

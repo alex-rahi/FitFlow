@@ -51,7 +51,7 @@ export default function RecipesScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Recipes</Text>
-        <Text style={styles.subtitle}>Photo-only recipe grid from the community</Text>
+        <Text style={styles.subtitle}>Home-cooked recipe photos from the community</Text>
       </View>
       {loading ? (
         <View style={styles.center}>
