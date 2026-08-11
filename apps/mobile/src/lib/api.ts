@@ -277,7 +277,7 @@ class ApiClient {
     return res.json();
   };
 
-  /** Runs YOLO moderation and auto-publishes on pass — no manual review queue. */
+  /** Runs YOLO moderation — auto-publishes on clear pass, human review if flagged. */
   runYoloModeration = async (postId: string) => {
     const store = getUploadStore();
     const post = store.find((p) => String(p.id) === String(postId));
@@ -307,12 +307,13 @@ class ApiClient {
       }
     }
 
-    for (let attempt = 0; attempt < 6; attempt++) {
+    for (let attempt = 0; attempt < 12; attempt++) {
       try {
         const remote = await this.getPost(postId);
         if (remote.status === 'published') return remote;
+        if (remote.status === 'pending_review') return remote;
         if (remote.status === 'rejected') {
-          throw new Error('Post rejected by YOLO content moderation');
+          throw new Error('Post rejected by content moderation');
         }
       } catch (err) {
         if (err instanceof Error && err.message.includes('rejected')) throw err;
@@ -320,7 +321,7 @@ class ApiClient {
       await delay(1500);
     }
 
-    throw new Error('YOLO moderation timed out — check back shortly');
+    throw new Error('Moderation timed out — check back shortly');
   };
 
   likePost = async (postId: string) => {

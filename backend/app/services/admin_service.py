@@ -7,6 +7,24 @@ from app.models.schemas import ModerationStats, PostResponse, ReviewAction, Revi
 
 
 async def get_review_queue(limit: int = 50) -> list[ReviewItem]:
+    if settings.use_local_yolo:
+        from app.services import local_post_store
+
+        items = []
+        for row in local_post_store.list_local_review_queue(limit):
+            post = local_post_store.get_local_post(row["post_id"])
+            items.append(ReviewItem(
+                id=row["id"],
+                post_id=row["post_id"],
+                priority=row["priority"],
+                review_status=row["review_status"],
+                post=post,
+                detections=row.get("detections", []),
+                moderation_scores=row.get("moderation_scores", []),
+                created_at=row["created_at"],
+            ))
+        return items
+
     pool = await get_pool()
     rows = await pool.fetch(
         """SELECT rq.* FROM review_queue rq
@@ -42,6 +60,13 @@ async def get_review_queue(limit: int = 50) -> list[ReviewItem]:
 
 
 async def submit_review(review_id: UUID, reviewer_id: UUID, action: ReviewAction) -> bool:
+    if settings.use_local_yolo:
+        from app.services import local_post_store
+
+        return local_post_store.submit_local_review(
+            review_id, action.action.value, action.notes
+        )
+
     pool = await get_pool()
     row = await pool.fetchrow("SELECT * FROM review_queue WHERE id = $1", review_id)
     if not row:

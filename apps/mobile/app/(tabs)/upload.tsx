@@ -116,16 +116,26 @@ export default function UploadScreen() {
       }
 
       setStatus('Moderating...');
-      await api.runYoloModeration(post.id);
+      const moderation = await api.runYoloModeration(post.id);
 
       analytics.track('upload_complete', {
         post_id: post.id,
         category,
         feed_view: destination,
         media_type: mediaType,
+        moderation_status: moderation.status,
       });
 
-      notify('Published', 'Live in feed.');
+      if (moderation.status === 'pending_review') {
+        notify(
+          'Submitted for review',
+          'Automated checks flagged this post. A moderator will approve it before it goes live.',
+        );
+      } else if (moderation.status === 'rejected') {
+        notify('Not published', 'This post did not pass content moderation.');
+      } else {
+        notify('Published', 'Live in feed.');
+      }
       setCaption('');
       setMediaUri(null);
       setPhotoDisclaimerAccepted(false);

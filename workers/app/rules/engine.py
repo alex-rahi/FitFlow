@@ -41,20 +41,33 @@ MODERATION_CATEGORIES = {
     "hate_harassment", "unsafe_activity",
 }
 
+# Free-tier thresholds — no paid moderation APIs.
+REJECT_THRESHOLD = 0.9
+FLAG_THRESHOLD = 0.5
+
 
 def rule_content_moderation(ctx: EvaluationContext, threshold: float = 0.7) -> RuleResult:
-    """Reject or flag content that exceeds moderation thresholds."""
+    """Reject high-confidence violations; flag gray scores for human review."""
+    flagged_category = None
+    flagged_score = 0.0
     for score in ctx.moderation_scores:
-        if score["category"] in MODERATION_CATEGORIES and score["score"] >= threshold:
-            if score["score"] >= 0.9:
-                return RuleResult(
-                    "content_moderation", Outcome.REJECT, score["score"],
-                    {"category": score["category"], "score": score["score"]},
-                )
+        if score["category"] not in MODERATION_CATEGORIES:
+            continue
+        value = score["score"]
+        if value >= REJECT_THRESHOLD:
             return RuleResult(
-                "content_moderation", Outcome.APPROVE, score["score"],
-                {"category": score["category"], "score": score["score"], "note": "Below reject threshold — auto-publish"},
+                "content_moderation", Outcome.REJECT, value,
+                {"category": score["category"], "score": value},
             )
+        if value >= FLAG_THRESHOLD and value > flagged_score:
+            flagged_category = score["category"]
+            flagged_score = value
+
+    if flagged_category:
+        return RuleResult(
+            "content_moderation", Outcome.FLAG_FOR_REVIEW, flagged_score,
+            {"category": flagged_category, "score": flagged_score, "note": "Gray score — human review"},
+        )
     return RuleResult("content_moderation", Outcome.APPROVE, 1.0)
 
 
@@ -65,7 +78,7 @@ def rule_exercise_detection(ctx: EvaluationContext) -> RuleResult:
 
     if not gym_detected:
         return RuleResult(
-            "exercise_detection", Outcome.APPROVE, 0.5,
+            "exercise_detection", Outcome.FLAG_FOR_REVIEW, 0.5,
             {"reason": "No gym-related objects detected", "detected": list(detected_labels)},
         )
     return RuleResult(
@@ -86,15 +99,15 @@ def rule_safety_detection(ctx: EvaluationContext) -> RuleResult:
 
 
 def rule_user_trust(ctx: EvaluationContext) -> RuleResult:
-    """Trust signals inform logging only — uploads auto-publish after YOLO checks."""
+    """Repeat offenders and new accounts go to human review."""
     if ctx.prior_violations >= 3:
         return RuleResult(
-            "user_trust", Outcome.APPROVE, 0.8,
+            "user_trust", Outcome.MANUAL_REVIEW, 0.8,
             {"reason": "Multiple prior violations", "count": ctx.prior_violations},
         )
     if ctx.user_trust_level < 20 and ctx.account_age_days < 7:
         return RuleResult(
-            "user_trust", Outcome.APPROVE, 0.6,
+            "user_trust", Outcome.FLAG_FOR_REVIEW, 0.6,
             {"reason": "New account with low trust"},
         )
     return RuleResult("user_trust", Outcome.APPROVE, 0.9)
@@ -133,7 +146,7 @@ def evaluate_all_rules(ctx: EvaluationContext, threshold: float = 0.7) -> tuple[
 
     best = max(rules, key=lambda r: OUTCOME_PRIORITY[r.outcome])
 
-    if best.outcome in (Outcome.APPROVE, Outcome.FLAG_FOR_REVIEW, Outcome.MANUAL_REVIEW):
+    if best.outcome == Outcome.APPROVE:
         final = Outcome.PUBLISH
     else:
         final = best.outcome

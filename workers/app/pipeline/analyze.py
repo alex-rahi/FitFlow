@@ -13,7 +13,8 @@ from app.config import settings
 from app.pipeline.frame_extractor import extract_frames, get_video_duration
 from app.pipeline.moderation import aggregate_moderation_scores, moderate_frame
 from app.pipeline.yolo_detector import detect_objects
-from app.rules.engine import EvaluationContext, Outcome, evaluate_all_rules
+from app.rules.engine import EvaluationContext, evaluate_all_rules
+from app.rules.outcomes import post_status_for_outcome
 
 
 @dataclass
@@ -21,6 +22,7 @@ class AnalysisResult:
     detections: list[dict]
     moderation_scores: list[dict]
     outcome: str
+    moderation_decision: str
     rules: list[dict]
     duration_seconds: float | None = None
 
@@ -61,19 +63,11 @@ def analyze_path(path: str, moderation_threshold: float | None = None) -> Analys
     )
     final_outcome, rule_results = evaluate_all_rules(ctx, threshold)
 
-    status_map = {
-        Outcome.PUBLISH: "published",
-        Outcome.APPROVE: "published",
-        Outcome.REJECT: "rejected",
-        Outcome.AGE_RESTRICT: "age_restricted",
-        Outcome.FLAG_FOR_REVIEW: "published",
-        Outcome.MANUAL_REVIEW: "published",
-    }
-
     return AnalysisResult(
         detections=all_detections,
         moderation_scores=mod_scores,
-        outcome=status_map.get(final_outcome, "published"),
+        outcome=post_status_for_outcome(final_outcome),
+        moderation_decision=final_outcome.value,
         rules=[
             {
                 "rule_name": rr.rule_name,
