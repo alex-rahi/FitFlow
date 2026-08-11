@@ -13,7 +13,7 @@ import {
 import { FEED_LANES, FeedLaneId, filterPostsForLane } from '../../constants/categories';
 import { rankPostsByEngagement, rankPostsForUser, getMatchingInterest } from '../../lib/feedRanking';
 import { buildScrollFeedItems, ScrollFeedItem } from '../../lib/feedItems';
-import { getLaneTheme, mixPointer, webAmbientStyle } from '../../lib/feedTheme';
+import { FeedTheme, getLaneTheme, mixPointer, webAmbientStyle } from '../../lib/feedTheme';
 import { recordLaneVisit, recordPostSignal } from '../../lib/userInterests';
 import { useUserInterests } from '../../hooks/useUserInterests';
 import { analytics } from '../../lib/analytics';
@@ -22,16 +22,26 @@ import { VideoCard, VideoPost } from '../VideoCard';
 import { ThreadSlide } from '../ThreadSlide';
 import { AdPlaceholder } from '../AdPlaceholder';
 import { WatchFocusFrame, getWatchScreenSize } from './WatchFocusFrame';
+import { FluidPageStack } from './FluidPageStack';
 
-const SWIPE_THRESHOLD = 52;
 const HUD_HIDE_MS = 3200;
 const DWELL_MS = 2500;
+const DISPLACE_RATIO = 0.2;
+const VELOCITY_THRESHOLD = 0.28;
+const AXIS_LOCK_PX = 10;
+const RUBBER = 0.24;
 
 function laneItemAt(lanes: Lane[], laneIndex: number, itemIndex: number): ScrollFeedItem | null {
   if (laneIndex < 0 || laneIndex >= lanes.length) return null;
   const laneItems = lanes[laneIndex].items;
   if (laneItems.length === 0) return null;
   return laneItems[Math.min(itemIndex, laneItems.length - 1)];
+}
+
+function rubberBand(value: number, canGoNext: boolean, canGoPrev: boolean): number {
+  if (value < 0 && !canGoNext) return value * RUBBER;
+  if (value > 0 && !canGoPrev) return value * RUBBER;
+  return value;
 }
 
 interface Lane {
@@ -63,18 +73,25 @@ export function FourWayFeed({
   const [itemIdx, setItemIdx] = useState(0);
   const [hudVisible, setHudVisible] = useState(true);
   const [pointer, setPointer] = useState({ x: 0.5, y: 0.4 });
+  const [dragAxis, setDragAxis] = useState<'x' | 'y' | null>(null);
   const seenImpressions = useRef(new Set<string>());
   const impressionStarted = useRef<number | null>(null);
   const hudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const axisLock = useRef<'x' | 'y' | null>(null);
 
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
   const dragX = useRef(new Animated.Value(0)).current;
   const dragY = useRef(new Animated.Value(0)).current;
+  const zeroAnim = useRef(new Animated.Value(0)).current;
+  const fullOpacity = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const hudOpacity = useRef(new Animated.Value(1)).current;
   const themeBlend = useRef(new Animated.Value(0)).current;
+
+  const laneIdxRef = useRef(laneIdx);
+  const itemIdxRef = useRef(itemIdx);
+  laneIdxRef.current = laneIdx;
+  itemIdxRef.current = itemIdx;
 
   const lanes: Lane[] = useMemo(
     () =>
@@ -103,6 +120,10 @@ export function FourWayFeed({
   const items = lane?.items ?? [];
   const item = items[itemIdx];
   const progress = items.length > 1 ? itemIdx / (items.length - 1) : 0;
+
+  const { screenH } = getWatchScreenSize(width, height);
+  const cardInset = Math.max(12, bottomInset * 0.35);
+  const pageW = width;
 
   const revealHud = useCallback(() => {
     setHudVisible(true);
@@ -172,71 +193,49 @@ export function FourWayFeed({
     if (item) trackImpression(item);
   }, [item, trackImpression]);
 
-  const resetDrag = useCallback(() => {
+  const springBack = useCallback(() => {
+    axisLock.current = null;
+    setDragAxis(null);
     Animated.parallel([
-      Animated.spring(dragX, { toValue: 0, friction: 7, tension: 80, useNativeDriver: true }),
-      Animated.spring(dragY, { toValue: 0, friction: 7, tension: 80, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
+      Animated.spring(dragX, { toValue: 0, friction: 8, tension: 72, useNativeDriver: true }),
+      Animated.spring(dragY, { toValue: 0, friction: 8, tension: 72, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 72, useNativeDriver: true }),
     ]).start();
   }, [dragX, dragY, scaleAnim]);
 
-  const animateTransition = useCallback((dir: 'up' | 'down' | 'left' | 'right', apply: () => void) => {
-    const exitOffset =
-      dir === 'up' ? -64 : dir === 'down' ? 64 : dir === 'left' ? -width * 0.12 : width * 0.12;
+  const completeFluidMove = useCallback((
+    axis: 'x' | 'y',
+    direction: 1 | -1,
+    apply: () => void,
+  ) => {
+    const animValue = axis === 'x' ? dragX : dragY;
+    const pageSize = axis === 'x' ? pageW : screenH;
+    const target = -direction * pageSize;
 
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 120,
-        easing: Easing.out(Easing.quad),
+      Animated.spring(animValue, {
+        toValue: target,
+        friction: 9,
+        tension: 68,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
-        toValue: exitOffset,
-        duration: 120,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 0.94,
-        duration: 120,
-        useNativeDriver: true,
-      }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 72, useNativeDriver: true }),
     ]).start(() => {
       apply();
-      slideAnim.setValue(-exitOffset * 0.45);
-      fadeAnim.setValue(0.4);
-      scaleAnim.setValue(1.04);
-      dragX.setValue(0);
-      dragY.setValue(0);
+      animValue.setValue(0);
+      axisLock.current = null;
+      setDragAxis(null);
       revealHud();
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 260,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 260,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 90,
-          useNativeDriver: true,
-        }),
-      ]).start();
     });
-  }, [fadeAnim, revealHud, scaleAnim, slideAnim, width, dragX, dragY]);
+  }, [dragX, dragY, pageW, revealHud, scaleAnim, screenH]);
 
-  const changeLane = useCallback((next: number, dir: 'left' | 'right') => {
-    if (next < 0 || next >= lanes.length || next === laneIdx) return;
-    trackDwell(item);
-    animateTransition(dir, () => {
+  const changeLane = useCallback((next: number, direction: 1 | -1) => {
+    if (next < 0 || next >= lanes.length || next === laneIdxRef.current) {
+      springBack();
+      return;
+    }
+    trackDwell(items[itemIdxRef.current]);
+    completeFluidMove('x', direction, () => {
       setLaneIdx(next);
       setItemIdx(0);
       recordLaneVisit(lanes[next].id);
@@ -246,58 +245,115 @@ export function FourWayFeed({
         feed_view: 'feed',
       });
     });
-  }, [animateTransition, item, laneIdx, lanes, trackDwell]);
+  }, [completeFluidMove, items, lanes, springBack, trackDwell]);
 
   const navigate = useCallback((dir: 'up' | 'down' | 'left' | 'right') => {
-    if (dir === 'up' && itemIdx < items.length - 1) {
-      trackDwell(item);
-      animateTransition('up', () => setItemIdx((i) => i + 1));
-    } else if (dir === 'down' && itemIdx > 0) {
-      trackDwell(item);
-      animateTransition('down', () => setItemIdx((i) => i - 1));
+    const li = laneIdxRef.current;
+    const ii = itemIdxRef.current;
+    const laneItems = lanes[li]?.items ?? [];
+
+    if (dir === 'up' && ii < laneItems.length - 1) {
+      trackDwell(laneItems[ii]);
+      completeFluidMove('y', 1, () => setItemIdx((i) => i + 1));
+    } else if (dir === 'down' && ii > 0) {
+      trackDwell(laneItems[ii]);
+      completeFluidMove('y', -1, () => setItemIdx((i) => i - 1));
     } else if (dir === 'left') {
-      changeLane(laneIdx + 1, 'left');
+      changeLane(li + 1, 1);
     } else if (dir === 'right') {
-      changeLane(laneIdx - 1, 'right');
+      changeLane(li - 1, -1);
     } else {
-      resetDrag();
+      springBack();
     }
-  }, [animateTransition, changeLane, item, itemIdx, items.length, laneIdx, resetDrag, trackDwell]);
+  }, [changeLane, completeFluidMove, lanes, springBack, trackDwell]);
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_, g) =>
-          Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8,
+          Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
         onPanResponderGrant: () => {
           revealHud();
-          dragX.setOffset(0);
-          dragY.setOffset(0);
+          axisLock.current = null;
+          setDragAxis(null);
         },
         onPanResponderMove: (_, g) => {
-          const damp = 0.42;
-          dragX.setValue(g.dx * damp);
-          dragY.setValue(g.dy * damp);
-          const dist = Math.min(Math.hypot(g.dx, g.dy) / 280, 0.06);
-          scaleAnim.setValue(1 - dist);
+          const { dx, dy } = g;
+          const li = laneIdxRef.current;
+          const ii = itemIdxRef.current;
+          const laneItems = lanes[li]?.items ?? [];
+
+          if (!axisLock.current && Math.hypot(dx, dy) > AXIS_LOCK_PX) {
+            axisLock.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+            setDragAxis(axisLock.current);
+          }
+
+          if (axisLock.current === 'y') {
+            const canNext = ii < laneItems.length - 1;
+            const canPrev = ii > 0;
+            dragY.setValue(rubberBand(dy, canNext, canPrev));
+            dragX.setValue(0);
+            const progress = Math.min(Math.abs(dy) / screenH, 1);
+            scaleAnim.setValue(1 - progress * 0.035);
+          } else if (axisLock.current === 'x') {
+            const canNext = li < lanes.length - 1;
+            const canPrev = li > 0;
+            dragX.setValue(rubberBand(dx, canNext, canPrev));
+            dragY.setValue(0);
+            const progress = Math.min(Math.abs(dx) / pageW, 1);
+            scaleAnim.setValue(1 - progress * 0.025);
+          }
         },
         onPanResponderRelease: (_, g) => {
-          const { dx, dy } = g;
-          if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
-            resetDrag();
+          const { dx, dy, vx, vy } = g;
+          const li = laneIdxRef.current;
+          const ii = itemIdxRef.current;
+          const laneItems = lanes[li]?.items ?? [];
+
+          if (!axisLock.current) {
+            springBack();
             return;
           }
-          if (Math.abs(dx) > Math.abs(dy)) {
-            if (dx < 0) navigate('left');
-            else navigate('right');
+
+          if (axisLock.current === 'y') {
+            const goingNext = dy < -screenH * DISPLACE_RATIO || vy < -VELOCITY_THRESHOLD;
+            const goingPrev = dy > screenH * DISPLACE_RATIO || vy > VELOCITY_THRESHOLD;
+            if (goingNext && ii < laneItems.length - 1) {
+              trackDwell(laneItems[ii]);
+              completeFluidMove('y', 1, () => setItemIdx((i) => i + 1));
+            } else if (goingPrev && ii > 0) {
+              trackDwell(laneItems[ii]);
+              completeFluidMove('y', -1, () => setItemIdx((i) => i - 1));
+            } else {
+              springBack();
+            }
           } else {
-            if (dy < 0) navigate('up');
-            else navigate('down');
+            const goingNext = dx < -pageW * DISPLACE_RATIO || vx < -VELOCITY_THRESHOLD;
+            const goingPrev = dx > pageW * DISPLACE_RATIO || vx > VELOCITY_THRESHOLD;
+            if (goingNext && li < lanes.length - 1) {
+              changeLane(li + 1, 1);
+            } else if (goingPrev && li > 0) {
+              changeLane(li - 1, -1);
+            } else {
+              springBack();
+            }
           }
         },
       }),
-    [dragX, dragY, navigate, resetDrag, revealHud, scaleAnim],
+    [
+      changeLane,
+      completeFluidMove,
+      dragX,
+      dragY,
+      lanes,
+      pageW,
+      revealHud,
+      scaleAnim,
+      screenH,
+      springBack,
+      trackDwell,
+    ],
   );
 
   useEffect(() => {
@@ -355,22 +411,124 @@ export function FourWayFeed({
   const orbBX = mixPointer(75, pointer.x, 25);
   const orbBY = mixPointer(70, pointer.y, 22);
 
-  const { screenH } = getWatchScreenSize(width, height);
-  const cardInset = Math.max(12, bottomInset * 0.35);
-
-  const prevItem = itemIdx > 0 ? items[itemIdx - 1] : null;
-  const nextItem = itemIdx < items.length - 1 ? items[itemIdx + 1] : null;
   const prevLane = laneIdx > 0 ? lanes[laneIdx - 1] : null;
   const nextLane = laneIdx < lanes.length - 1 ? lanes[laneIdx + 1] : null;
-  const prevLaneTheme = prevLane ? getLaneTheme(prevLane.id) : null;
-  const nextLaneTheme = nextLane ? getLaneTheme(nextLane.id) : null;
-  const prevLaneItem = laneItemAt(lanes, laneIdx - 1, itemIdx);
-  const nextLaneItem = laneItemAt(lanes, laneIdx + 1, itemIdx);
 
-  const interestHint =
-    lane?.id === 'main_feed' && item?.type === 'post'
-      ? getMatchingInterest(item.post, interestScores)?.label ?? null
-      : null;
+  const renderCard = useCallback((
+    feedItem: ScrollFeedItem,
+    cardTheme: FeedTheme,
+    hint: string | null,
+    interactive = true,
+  ) => {
+    const handlers = interactive
+      ? {
+          onLike: () => feedItem.type === 'post' && onLike(feedItem.post.id),
+          onComment: () => feedItem.type === 'post' && onComment(feedItem.post.id),
+        }
+      : { onLike: () => {}, onComment: () => {} };
+
+    if (feedItem.type === 'ad') {
+      return (
+        <AdPlaceholder
+          ad={feedItem.ad}
+          height={screenH}
+          onPress={() =>
+            interactive && analytics.track('ad_click', {
+              ad_id: feedItem.ad.id,
+              brand: feedItem.ad.brand,
+              placement: 'feed_scroll',
+            })
+          }
+        />
+      );
+    }
+    if (feedItem.post.media_type === 'text' || feedItem.post.category === 'advice') {
+      return (
+        <ThreadSlide
+          post={feedItem.post}
+          height={screenH}
+          bottomInset={cardInset}
+          theme={cardTheme}
+          {...handlers}
+        />
+      );
+    }
+    return (
+      <VideoCard
+        post={feedItem.post}
+        index={feedItem.postIndex}
+        height={screenH}
+        bottomInset={cardInset}
+        immersive
+        interestHint={hint}
+        {...handlers}
+      />
+    );
+  }, [cardInset, onComment, onLike, screenH]);
+
+  const renderLaneFrame = (
+    laneData: Lane,
+    laneIndex: number,
+    itemIndex: number,
+    interactive: boolean,
+  ) => {
+    const laneTheme = getLaneTheme(laneData.id);
+    const laneItems = laneData.items;
+    const laneItem = laneItems[itemIndex];
+    if (!laneItem) return null;
+
+    const pItem = itemIndex > 0 ? laneItems[itemIndex - 1] : null;
+    const nItem = itemIndex < laneItems.length - 1 ? laneItems[itemIndex + 1] : null;
+    const pLane = laneIndex > 0 ? lanes[laneIndex - 1] : null;
+    const nLane = laneIndex < lanes.length - 1 ? lanes[laneIndex + 1] : null;
+    const hint =
+      laneData.id === 'main_feed' && laneItem.type === 'post'
+        ? getMatchingInterest(laneItem.post, interestScores)?.label ?? null
+        : null;
+
+    const screenContent = interactive ? (
+      <FluidPageStack
+        pageW={pageW}
+        pageH={screenH}
+        offsetX={zeroAnim}
+        offsetY={dragY}
+        axis={dragAxis === 'y' ? 'y' : null}
+        current={renderCard(laneItem, laneTheme, hint, true)}
+        prev={pItem ? renderCard(pItem, laneTheme, null, false) : null}
+        next={nItem ? renderCard(nItem, laneTheme, null, false) : null}
+      />
+    ) : (
+      renderCard(laneItem, laneTheme, hint, false)
+    );
+
+    return (
+      <WatchFocusFrame
+        width={width}
+        height={height}
+        theme={laneTheme}
+        lanes={lanes}
+        laneIdx={laneIndex}
+        itemIdx={itemIndex}
+        itemCount={laneItems.length}
+        prevItem={pItem}
+        nextItem={nItem}
+        prevLaneItem={laneItemAt(lanes, laneIndex - 1, itemIndex)}
+        nextLaneItem={laneItemAt(lanes, laneIndex + 1, itemIndex)}
+        prevLaneTheme={pLane ? getLaneTheme(pLane.id) : null}
+        nextLaneTheme={nLane ? getLaneTheme(nLane.id) : null}
+        prevLaneLabel={pLane?.label}
+        nextLaneLabel={nLane?.label}
+        hudOpacity={interactive ? hudOpacity : fullOpacity}
+        topInterests={laneData.id === 'main_feed' ? topInterests : []}
+        dragOffsetX={interactive ? dragX : undefined}
+        dragOffsetY={interactive ? dragY : undefined}
+        pageW={pageW}
+        pageH={screenH}
+      >
+        {screenContent}
+      </WatchFocusFrame>
+    );
+  };
 
   if (loading && posts.length === 0) {
     return (
@@ -388,7 +546,6 @@ export function FourWayFeed({
       </View>
     );
   }
-
 
   return (
     <View
@@ -420,73 +577,46 @@ export function FourWayFeed({
         </>
       )}
 
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [
-              { translateX: dragX },
-              { translateY: Animated.add(slideAnim, dragY) },
-              { scale: scaleAnim },
-            ],
-          },
-        ]}
-      >
-        <WatchFocusFrame
-          width={width}
-          height={height}
-          theme={theme}
-          lanes={lanes}
-          laneIdx={laneIdx}
-          itemIdx={itemIdx}
-          itemCount={items.length}
-          prevItem={prevItem}
-          nextItem={nextItem}
-          prevLaneItem={prevLaneItem}
-          nextLaneItem={nextLaneItem}
-          prevLaneTheme={prevLaneTheme}
-          nextLaneTheme={nextLaneTheme}
-          prevLaneLabel={prevLane?.label}
-          nextLaneLabel={nextLane?.label}
-          hudOpacity={hudOpacity}
-          topInterests={lane?.id === 'main_feed' ? topInterests : []}
+      <View style={styles.fluidStage}>
+        {dragAxis === 'x' && prevLane ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.laneGhost,
+              { width, transform: [{ translateX: Animated.subtract(dragX, pageW) }] },
+            ]}
+          >
+            {renderLaneFrame(prevLane, laneIdx - 1, itemIdx, false)}
+          </Animated.View>
+        ) : null}
+
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              width,
+              transform: [
+                { translateX: dragX },
+                { scale: scaleAnim },
+              ],
+            },
+          ]}
         >
-          {item.type === 'ad' ? (
-            <AdPlaceholder
-              ad={item.ad}
-              height={screenH}
-              onPress={() =>
-                analytics.track('ad_click', {
-                  ad_id: item.ad.id,
-                  brand: item.ad.brand,
-                  placement: 'feed_scroll',
-                })
-              }
-            />
-          ) : item.post.media_type === 'text' || item.post.category === 'advice' ? (
-            <ThreadSlide
-              post={item.post}
-              height={screenH}
-              bottomInset={cardInset}
-              theme={theme}
-              onLike={() => onLike(item.post.id)}
-              onComment={() => onComment(item.post.id)}
-            />
-          ) : (
-            <VideoCard
-              post={item.post}
-              index={item.postIndex}
-              height={screenH}
-              bottomInset={cardInset}
-              immersive
-              interestHint={interestHint}
-              onLike={() => onLike(item.post.id)}
-              onComment={() => onComment(item.post.id)}
-            />
-          )}
-        </WatchFocusFrame>
-      </Animated.View>
+          {renderLaneFrame(lane, laneIdx, itemIdx, true)}
+        </Animated.View>
+
+        {dragAxis === 'x' && nextLane ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.laneGhost,
+              { width, transform: [{ translateX: Animated.add(dragX, pageW) }] },
+            ]}
+          >
+            {renderLaneFrame(nextLane, laneIdx + 1, itemIdx, false)}
+          </Animated.View>
+        ) : null}
+      </View>
 
       <View style={styles.progressRail} pointerEvents="none">
         <Animated.View
@@ -520,7 +650,14 @@ export function FourWayFeed({
 
 const styles = StyleSheet.create({
   container: { overflow: 'hidden' },
+  fluidStage: { flex: 1, overflow: 'hidden' },
   content: { flex: 1 },
+  laneGhost: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+  },
   center: { alignItems: 'center', justifyContent: 'center' },
   empty: { fontSize: 18, fontWeight: '800', letterSpacing: 1 },
   emptySub: { color: Colors.textMuted, fontSize: 13, marginTop: Spacing.xs },
