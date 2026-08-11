@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Platform,
   ActivityIndicator,
-  Image,
   Animated,
   Easing,
 } from 'react-native';
@@ -21,8 +20,8 @@ export interface VideoPost {
   id: string;
   caption?: string;
   category?: string;
-  media_type?: 'video' | 'photo' | 'text';
-  photo_uri?: string | null;
+  media_type?: 'video' | 'form' | 'text';
+  workout_form?: import('../constants/workoutForm').WorkoutFormData;
   topics?: string[];
   created_at?: string;
   like_count: number;
@@ -77,12 +76,11 @@ export function VideoCard({
   accentColor: accentOverride,
   interestHint,
 }: VideoCardProps) {
-  const isPhoto = post.media_type === 'photo';
   const accent = accentOverride ?? getCategoryAccent(post.category);
   const accentSoft = getCategoryAccentSoft(post.category);
   const accentBorder = getCategoryAccentBorder(post.category);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
-  const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS && !isPhoto);
+  const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS);
   const [liked, setLiked] = useState(false);
 
   const kenBurns = useRef(new Animated.Value(1)).current;
@@ -102,7 +100,7 @@ export function VideoCard({
   }, [post.id, enterOpacity]);
 
   useEffect(() => {
-    if (!USE_PLACEHOLDERS && !isPhoto) return;
+    if (!USE_PLACEHOLDERS) return;
     kenBurns.setValue(1);
     Animated.loop(
       Animated.sequence([
@@ -120,11 +118,11 @@ export function VideoCard({
         }),
       ]),
     ).start();
-  }, [isPhoto, kenBurns, post.id]);
+  }, [kenBurns, post.id]);
 
   useEffect(() => {
     let active = true;
-    if (isPhoto || USE_PLACEHOLDERS) {
+    if (USE_PLACEHOLDERS) {
       setLoadingVideo(false);
       return;
     }
@@ -139,9 +137,9 @@ export function VideoCard({
     return () => {
       active = false;
     };
-  }, [isPhoto, post.id, post.raw_video_url, post.processed_video_url]);
+  }, [post.id, post.raw_video_url, post.processed_video_url]);
 
-  const showVideo = !isPhoto && playbackUrl && Platform.OS === 'web';
+  const showVideo = playbackUrl && Platform.OS === 'web';
 
   const handleLike = () => {
     setLiked(true);
@@ -183,13 +181,7 @@ export function VideoCard({
           },
         ]}
       >
-        {isPhoto ? (
-          post.photo_uri ? (
-            <Image source={{ uri: post.photo_uri }} style={styles.mediaFill} resizeMode="cover" />
-          ) : (
-            <Text style={[styles.placeholderIcon, { color: accent }]}>📷</Text>
-          )
-        ) : loadingVideo ? (
+        {loadingVideo ? (
           <ActivityIndicator color={accent} size="large" />
         ) : showVideo ? (
           <WebVideo uri={playbackUrl} />
