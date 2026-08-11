@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "RecipeTok",
-    "slug": "recipetok",
+    "name": "GymTok",
+    "slug": "gymtok",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -30,8 +30,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "RecipeTok needs access to your photos to upload recipe images.",
-          "cameraPermission": "RecipeTok needs camera access to photograph your dishes."
+          "photosPermission": "GymTok needs access to your photos to share workout content.",
+          "cameraPermission": "GymTok needs camera access to record workouts and progress pics."
         }
       ]
     ]

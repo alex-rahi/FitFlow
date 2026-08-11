@@ -4,7 +4,7 @@ import { Colors } from '../../src/constants/theme';
 export default function TabLayout() {
   return (
     <Tabs
-      initialRouteName="recipes"
+      initialRouteName="feed"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
@@ -19,11 +19,11 @@ export default function TabLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen name="recipes" options={{ title: 'Recipes', tabBarIcon: () => null }} />
+      <Tabs.Screen name="feed" options={{ title: 'Feed', tabBarIcon: () => null }} />
+      <Tabs.Screen name="recipes" options={{ title: 'Photos', tabBarIcon: () => null }} />
       <Tabs.Screen name="upload" options={{ title: 'Upload', tabBarIcon: () => null }} />
+      <Tabs.Screen name="community" options={{ title: 'Community', tabBarIcon: () => null }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: () => null }} />
-      <Tabs.Screen name="feed" options={{ href: null }} />
-      <Tabs.Screen name="community" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>

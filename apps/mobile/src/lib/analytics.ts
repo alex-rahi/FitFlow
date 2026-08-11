@@ -3,6 +3,7 @@ import { USE_PLACEHOLDERS } from '../constants/theme';
 export type AnalyticsEventName =
   | 'screen_view'
   | 'feed_view_change'
+  | 'feed_lane_change'
   | 'video_impression'
   | 'video_open'
   | 'like'

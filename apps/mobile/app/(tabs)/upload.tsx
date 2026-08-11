@@ -18,13 +18,26 @@ import { Input } from '../../src/components/Input';
 import { ModerationPipeline } from '../../src/components/ModerationPipeline';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
-import { PostCategoryId, RECIPE_SUBCATEGORIES } from '../../src/constants/categories';
+import {
+  getCategoryLabel,
+  getUploadDestinationForCategory,
+  MediaType,
+  PostCategoryId,
+} from '../../src/constants/categories';
 import { Colors, Radius, Spacing, isDemoMode } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
+import { uploadVideoFile } from '../../src/lib/uploadVideo';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.sm) / 2;
+const PREVIEW_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
+
+const UPLOAD_CATEGORIES: PostCategoryId[] = ['workouts', 'nutrition', 'prs', 'advice'];
+const MEDIA_TYPES: { id: MediaType; label: string }[] = [
+  { id: 'video', label: 'Video' },
+  { id: 'photo', label: 'Photo' },
+  { id: 'text', label: 'Thread' },
+];
 
 function notify(title: string, message: string) {
   if (Platform.OS === 'web') {
@@ -38,41 +51,47 @@ export default function UploadScreen() {
   useScreenAnalytics('upload');
   const { session } = useAuth();
   const [caption, setCaption] = useState('');
-  const [category, setCategory] = useState<PostCategoryId>('meal_prep');
+  const [category, setCategory] = useState<PostCategoryId>('workouts');
+  const [mediaType, setMediaType] = useState<MediaType>('video');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [moderationStatus, setModerationStatus] = useState<{ status: string; decision?: string | null } | null>(null);
 
-  const pickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setMediaUri(result.assets[0].uri);
-    }
-  };
+  const destination = getUploadDestinationForCategory(category, mediaType);
+  const isText = mediaType === 'text';
 
-  const capturePhoto = async () => {
-    const { status: perm } = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm !== 'granted') {
-      Alert.alert('Permission needed', 'Camera access is required.');
-      return;
+  const pickMedia = async (fromCamera: boolean) => {
+    if (isText) return;
+    if (fromCamera) {
+      const { status: perm } = await ImagePicker.requestCameraPermissionsAsync();
+      if (perm !== 'granted') {
+        Alert.alert('Permission needed', 'Camera access is required.');
+        return;
+      }
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({
+          mediaTypes: mediaType === 'video' ? ['videos'] : ['images'],
+          quality: 0.8,
+        })
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: mediaType === 'video' ? ['videos'] : ['images'],
+          quality: 0.8,
+        });
     if (!result.canceled && result.assets[0]) {
       setMediaUri(result.assets[0].uri);
     }
   };
 
   const handleUpload = async () => {
-    if (!mediaUri) {
-      notify('No photo', 'Please select a recipe photo first.');
+    if (!isText && !mediaUri) {
+      notify('No media', `Please select a ${mediaType} first.`);
+      return;
+    }
+    if (isText && !caption.trim()) {
+      notify('Empty thread', 'Write something for the community thread.');
       return;
     }
     if (!isDemoMode() && !session) {
@@ -87,7 +106,19 @@ export default function UploadScreen() {
     setModerationStatus(null);
     setStatus('Creating post...');
     try {
-      const post = await api.createPost(caption || undefined, category, 'photo', mediaUri);
+      const post = await api.createPost(
+        caption || undefined,
+        category,
+        isText ? 'text' : mediaType,
+        mediaType === 'photo' ? mediaUri : null,
+      );
+
+      if (mediaType === 'video' && mediaUri && !isDemoMode()) {
+        setStatus('Uploading video...');
+        const { upload_url, storage_path } = await api.getUploadUrl(post.id);
+        await uploadVideoFile(storage_path, mediaUri);
+        await api.confirmUpload(post.id);
+      }
 
       setStatus('Running content moderation...');
       setModerationStatus({ status: 'processing', decision: null });
@@ -101,12 +132,13 @@ export default function UploadScreen() {
       analytics.track('upload_complete', {
         post_id: post.id,
         category,
-        feed_view: 'recipes',
-        media_type: 'photo',
+        feed_view: destination,
+        media_type: mediaType,
         moderation: 'yolo_auto_publish',
       });
 
-      const successMessage = 'Passed moderation — added to the recipe grid.';
+      const destLabel = destination === 'feed' ? 'video feed' : destination === 'photos' ? 'photo grid' : 'community';
+      const successMessage = `Passed moderation — added to ${destLabel}.`;
       setStatus('');
       setFeedback({ type: 'success', message: successMessage });
       notify('Published', successMessage);
@@ -126,40 +158,61 @@ export default function UploadScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Upload</Text>
-        <Text style={styles.subtitle}>Share a recipe photo to the grid</Text>
+        <Text style={styles.subtitle}>Share videos, photos, or community threads</Text>
 
-        <View style={styles.gridPreviewWrap}>
-          <View style={styles.gridCard}>
-            <View style={styles.gridThumb}>
-              {mediaUri ? (
-                <Image source={{ uri: mediaUri }} style={styles.gridPhoto} resizeMode="cover" />
-              ) : (
-                <Text style={styles.gridPhotoIcon}>📷</Text>
-              )}
-            </View>
-            <View style={styles.gridMeta}>
-              <Text style={styles.gridCaption} numberOfLines={2}>
-                {caption || 'Recipe caption preview'}
-              </Text>
-              <Text style={styles.gridAuthor}>@you</Text>
-            </View>
+        <View style={styles.typePicker}>
+          <Text style={styles.categoryLabel}>Content type</Text>
+          <View style={styles.categoryRow}>
+            {MEDIA_TYPES.map((type) => {
+              const active = mediaType === type.id;
+              return (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[styles.categoryChip, active && styles.categoryChipActive]}
+                  onPress={() => {
+                    setMediaType(type.id);
+                    setMediaUri(null);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{type.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
+        {!isText && (
+          <View style={styles.previewWrap}>
+            <View style={[styles.preview, mediaType === 'video' && styles.previewVideo]}>
+              {mediaUri ? (
+                mediaType === 'photo' ? (
+                  <Image source={{ uri: mediaUri }} style={styles.previewMedia} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.previewIcon}>🎬</Text>
+                )
+              ) : (
+                <Text style={styles.previewIcon}>{mediaType === 'video' ? '🎬' : '📷'}</Text>
+              )}
+            </View>
+          </View>
+        )}
+
         <View style={styles.categoryPicker}>
-          <Text style={styles.categoryLabel}>Recipe type</Text>
-          <View style={styles.categoryRow}>
-            {RECIPE_SUBCATEGORIES.map((cat) => {
+          <Text style={styles.categoryLabel}>Category</Text>
+          <View style={styles.categoryRowWrap}>
+            {UPLOAD_CATEGORIES.map((cat) => {
               const active = category === cat;
-              const label = cat === 'meal_prep' ? 'Meal Prep' : 'Nutrition';
               return (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.categoryChip, active && styles.categoryChipActive]}
+                  style={[styles.categoryChipSm, active && styles.categoryChipActive]}
                   onPress={() => setCategory(cat)}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{label}</Text>
+                  <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>
+                    {getCategoryLabel(cat)}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -167,8 +220,8 @@ export default function UploadScreen() {
         </View>
 
         <Input
-          label="Caption"
-          placeholder="Describe your dish, ingredients, or macros..."
+          label={isText ? 'Thread' : 'Caption'}
+          placeholder={isText ? 'Ask the community...' : 'Describe your workout, PR, or progress...'}
           value={caption}
           onChangeText={setCaption}
           multiline
@@ -178,12 +231,16 @@ export default function UploadScreen() {
           <Text style={styles.warning}>Log in with your Supabase account to upload.</Text>
         )}
 
-        <View style={styles.actions}>
-          <Button title="Choose Photo" onPress={pickPhoto} variant="secondary" disabled={uploading} />
-          <View style={{ height: Spacing.sm }} />
-          <Button title="Take Photo" onPress={capturePhoto} variant="secondary" disabled={uploading} />
-          <View style={{ height: Spacing.sm }} />
-          <Button title="Upload" onPress={handleUpload} loading={uploading} disabled={!mediaUri} />
+        {!isText && (
+          <View style={styles.actions}>
+            <Button title={`Choose ${mediaType === 'video' ? 'Video' : 'Photo'}`} onPress={() => pickMedia(false)} variant="secondary" disabled={uploading} />
+            <View style={{ height: Spacing.sm }} />
+            <Button title={`Record ${mediaType === 'video' ? 'Video' : 'Photo'}`} onPress={() => pickMedia(true)} variant="secondary" disabled={uploading} />
+          </View>
+        )}
+
+        <View style={[styles.actions, !isText && { marginTop: Spacing.sm }]}>
+          <Button title="Publish" onPress={handleUpload} loading={uploading} disabled={!isText && !mediaUri} />
         </View>
 
         {status ? (
@@ -215,31 +272,26 @@ const styles = StyleSheet.create({
   scroll: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
   title: { color: Colors.textPrimary, fontSize: 28, fontWeight: '800' },
   subtitle: { color: Colors.textSecondary, fontSize: 14, marginTop: Spacing.xs, marginBottom: Spacing.lg },
-  gridPreviewWrap: { alignItems: 'center', marginBottom: Spacing.lg },
-  gridCard: {
-    width: GRID_CARD_WIDTH,
+  typePicker: { marginBottom: Spacing.md },
+  previewWrap: { alignItems: 'center', marginBottom: Spacing.lg },
+  preview: {
+    width: PREVIEW_WIDTH * 0.55,
+    aspectRatio: 1,
     backgroundColor: Colors.cardBg,
     borderRadius: Radius.lg,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
-  },
-  gridThumb: {
-    width: '100%',
-    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a3a2e',
     overflow: 'hidden',
   },
-  gridPhoto: { width: '100%', height: '100%' },
-  gridPhotoIcon: { fontSize: 32 },
-  gridMeta: { padding: Spacing.sm },
-  gridCaption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  gridAuthor: { color: Colors.textMuted, fontSize: 11, marginTop: Spacing.xs },
+  previewVideo: { aspectRatio: 9 / 16, width: PREVIEW_WIDTH * 0.45 },
+  previewMedia: { width: '100%', height: '100%' },
+  previewIcon: { fontSize: 36 },
   categoryPicker: { marginBottom: Spacing.md },
   categoryLabel: { color: Colors.textSecondary, fontSize: 14, marginBottom: Spacing.sm, fontWeight: '500' },
   categoryRow: { flexDirection: 'row', gap: Spacing.sm },
+  categoryRowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   categoryChip: {
     flex: 1,
     paddingVertical: Spacing.sm,
@@ -247,6 +299,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     alignItems: 'center',
+    backgroundColor: Colors.cardBg,
+  },
+  categoryChipSm: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
     backgroundColor: Colors.cardBg,
   },
   categoryChipActive: {

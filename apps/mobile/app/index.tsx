@@ -12,7 +12,7 @@ export default function SplashScreen() {
     if (loading) return;
     const timer = setTimeout(() => {
       if (session) {
-        router.replace('/(tabs)/recipes');
+        router.replace('/(tabs)/feed');
       } else {
         router.replace('/(auth)/welcome');
       }
