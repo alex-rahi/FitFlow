@@ -1,5 +1,4 @@
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
-import { FeedViewId, filterPostsForFeedView, getFeedViewLabel } from '../constants/categories';
 import { VideoPost } from './VideoCard';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
@@ -9,85 +8,39 @@ const GRID_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - GRID_GAP) / 2;
 
 interface Props {
   posts: VideoPost[];
-  view: FeedViewId;
   onOpen?: (post: VideoPost, index: number) => void;
 }
 
-export function ProfilePostsPanel({ posts, view, onOpen }: Props) {
-  const filtered = filterPostsForFeedView(posts, view);
+export function ProfilePostsPanel({ posts, onOpen }: Props) {
+  const filtered = posts.filter((p) => p.media_type === 'photo' || !p.media_type);
 
   if (filtered.length === 0) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>No {getFeedViewLabel(view).toLowerCase()} posts yet</Text>
-        <Text style={styles.emptySubtitle}>
-          {view === 'feed' && 'Upload a recipe video to Watch.'}
-          {view === 'recipes' && 'Upload a recipe photo from the Upload tab.'}
-          {view === 'community' && 'Start a kitchen thread from Upload.'}
-        </Text>
-      </View>
-    );
-  }
-
-  if (view === 'recipes') {
-    return (
-      <View style={styles.grid}>
-        {filtered.map((post, index) => (
-          <TouchableOpacity
-            key={post.id}
-            style={styles.gridCard}
-            activeOpacity={0.85}
-            onPress={() => onOpen?.(post, index)}
-          >
-            <View style={styles.gridThumb}>
-              {post.media_type === 'photo' && post.photo_uri ? (
-                <Image source={{ uri: post.photo_uri }} style={styles.gridPhoto} resizeMode="cover" />
-              ) : (
-                <Text style={styles.playIcon}>📷</Text>
-              )}
-            </View>
-            <Text style={styles.gridCaption} numberOfLines={2}>{post.caption ?? 'Untitled'}</Text>
-            <Text style={styles.gridMeta}>♥ {post.like_count}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  }
-
-  if (view === 'community') {
-    return (
-      <View style={styles.list}>
-        {filtered.map((post, index) => (
-          <TouchableOpacity
-            key={post.id}
-            style={styles.threadRow}
-            activeOpacity={0.85}
-            onPress={() => onOpen?.(post, index)}
-          >
-            <Text style={styles.threadCaption} numberOfLines={2}>{post.caption ?? 'Community post'}</Text>
-            <Text style={styles.threadMeta}>💬 {post.comment_count} · ♥ {post.like_count}</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.emptyTitle}>No recipe photos yet</Text>
+        <Text style={styles.emptySubtitle}>Upload a recipe photo from the Upload tab.</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.list}>
+    <View style={styles.grid}>
       {filtered.map((post, index) => (
         <TouchableOpacity
           key={post.id}
-          style={styles.feedRow}
+          style={styles.gridCard}
           activeOpacity={0.85}
           onPress={() => onOpen?.(post, index)}
         >
-          <View style={styles.feedThumb}>
-            <Text style={styles.playIconSm}>▶</Text>
+          <View style={styles.gridThumb}>
+            {post.media_type === 'photo' && post.photo_uri ? (
+              <Image source={{ uri: post.photo_uri }} style={styles.gridPhoto} resizeMode="cover" />
+            ) : (
+              <Text style={styles.photoIcon}>📷</Text>
+            )}
           </View>
-          <View style={styles.feedBody}>
-            <Text style={styles.feedCaption} numberOfLines={2}>{post.caption ?? 'Recipe video'}</Text>
-            <Text style={styles.feedMeta}>♥ {post.like_count} · 💬 {post.comment_count}</Text>
-          </View>
+          <Text style={styles.gridCaption} numberOfLines={2}>{post.caption ?? 'Untitled'}</Text>
+          <Text style={styles.gridMeta}>♥ {post.like_count}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -121,38 +74,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gridPhoto: { width: '100%', height: '100%' },
+  photoIcon: { fontSize: 28 },
   gridCaption: { color: Colors.textPrimary, fontSize: 13, fontWeight: '600', padding: Spacing.sm },
   gridMeta: { color: Colors.red, fontSize: 11, fontWeight: '600', paddingHorizontal: Spacing.sm, paddingBottom: Spacing.sm },
-  list: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.xl, gap: Spacing.sm },
-  threadRow: {
-    backgroundColor: Colors.cardBg,
-    borderRadius: Radius.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-  },
-  threadCaption: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600', lineHeight: 20 },
-  threadMeta: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.xs },
-  feedRow: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    backgroundColor: Colors.cardBg,
-    borderRadius: Radius.lg,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-  },
-  feedThumb: {
-    width: 72,
-    height: 72,
-    borderRadius: Radius.md,
-    backgroundColor: '#1a1a2e',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  feedBody: { flex: 1, justifyContent: 'center' },
-  feedCaption: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  feedMeta: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
-  playIcon: { fontSize: 28, color: Colors.textMuted },
-  playIconSm: { fontSize: 20, color: Colors.textMuted },
 });
