@@ -23,6 +23,13 @@ const LANE_THEMES: Record<FeedLaneId, FeedTheme> = {
     ambientA: 'rgba(255,107,53,0.16)',
     ambientB: 'rgba(80,30,10,0.4)',
   },
+  equipment: {
+    accent: '#94A3B8',
+    accentSoft: 'rgba(148,163,184,0.35)',
+    glow: 'rgba(148,163,184,0.22)',
+    ambientA: 'rgba(148,163,184,0.16)',
+    ambientB: 'rgba(30,40,55,0.42)',
+  },
   nutrition: {
     accent: '#2ECC71',
     accentSoft: 'rgba(46,204,113,0.3)',
@@ -55,6 +62,7 @@ const LANE_THEMES: Record<FeedLaneId, FeedTheme> = {
 
 const CATEGORY_ACCENTS: Record<string, string> = {
   workouts: '#FF6B35',
+  equipment: '#94A3B8',
   nutrition: '#2ECC71',
   prs: '#F4C430',
   advice: '#38BDF8',
@@ -81,6 +89,7 @@ export function getCategoryAccent(category?: string | null): string {
 export function getCategoryAccentSoft(category?: string | null): string {
   const map: Record<string, string> = {
     workouts: 'rgba(255,107,53,0.35)',
+    equipment: 'rgba(148,163,184,0.35)',
     nutrition: 'rgba(46,204,113,0.3)',
     prs: 'rgba(244,196,48,0.32)',
     advice: 'rgba(56,189,248,0.3)',
@@ -91,6 +100,7 @@ export function getCategoryAccentSoft(category?: string | null): string {
 export function getCategoryAccentBorder(category?: string | null): string {
   const map: Record<string, string> = {
     workouts: 'rgba(255,107,53,0.45)',
+    equipment: 'rgba(148,163,184,0.42)',
     nutrition: 'rgba(46,204,113,0.4)',
     prs: 'rgba(244,196,48,0.42)',
     advice: 'rgba(56,189,248,0.4)',

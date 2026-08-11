@@ -33,7 +33,8 @@ const CAPTION_KEYWORDS: Record<ContentTopic, RegExp> = {
 };
 
 const CATEGORY_TOPICS: Partial<Record<string, ContentTopic[]>> = {
-  workouts: ['workouts', 'equipment'],
+  workouts: ['workouts'],
+  equipment: ['equipment'],
   nutrition: ['nutrition', 'meal_prep'],
   prs: ['prs', 'workouts'],
   advice: ['advice'],
@@ -72,6 +73,7 @@ export function getTopicLabel(topic: ContentTopic): string {
 export function laneToTopics(laneId: string): ContentTopic[] {
   switch (laneId) {
     case 'workouts': return ['workouts', 'equipment'];
+    case 'equipment': return ['equipment'];
     case 'nutrition': return ['nutrition', 'meal_prep'];
     case 'prs': return ['prs'];
     case 'photos': return ['workouts', 'prs'];
