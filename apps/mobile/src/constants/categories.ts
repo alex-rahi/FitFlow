@@ -6,6 +6,8 @@ export type FeedViewId = 'feed' | 'photos' | 'community';
 
 export type ApiFeedCategory = PostCategoryId | 'main_feed';
 
+export type FeedLaneId = ApiFeedCategory | 'photos' | 'community';
+
 export type UploadCategoryId = PostCategoryId;
 
 export type FeedLayoutType = 'scroll' | 'grid' | 'thread';
@@ -25,12 +27,14 @@ export const TAB_VIEWS: FeedView[] = [
   { id: 'community', label: 'Community', description: 'Training tips and discussion threads', layout: 'thread' },
 ];
 
-/** Horizontal swipe lanes on the main feed (left/right). */
-export const FEED_LANES: { id: ApiFeedCategory; label: string }[] = [
+/** Horizontal lanes — swipe ← → to switch. */
+export const FEED_LANES: { id: FeedLaneId; label: string }[] = [
   { id: 'main_feed', label: 'For You' },
   { id: 'workouts', label: 'Workouts' },
   { id: 'nutrition', label: 'Nutrition' },
   { id: 'prs', label: 'PRs' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'community', label: 'Talk' },
 ];
 
 export const PHOTO_CATEGORIES: PostCategoryId[] = ['workouts', 'nutrition', 'prs'];
@@ -81,8 +85,10 @@ export function filterPostsForFeedView<T extends { category?: string | null; med
 
 export function filterPostsForLane<T extends { category?: string | null; media_type?: string | null }>(
   posts: T[],
-  laneId: ApiFeedCategory,
+  laneId: FeedLaneId,
 ): T[] {
+  if (laneId === 'photos') return filterPostsForFeedView(posts, 'photos');
+  if (laneId === 'community') return filterPostsForFeedView(posts, 'community');
   const videos = posts.filter((post) => isVideoPost(post) && post.category !== 'advice');
   if (laneId === 'main_feed') return videos;
   return videos.filter((post) => post.category === laneId);
