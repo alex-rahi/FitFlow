@@ -20,6 +20,7 @@ import { analytics } from '../../lib/analytics';
 import { Colors, Spacing } from '../../constants/theme';
 import { VideoCard, VideoPost } from '../VideoCard';
 import { ThreadSlide } from '../ThreadSlide';
+import { WorkoutFormSlide } from '../WorkoutFormSlide';
 import { AdPlaceholder } from '../AdPlaceholder';
 import { WatchFocusFrame, getWatchScreenSize } from './WatchFocusFrame';
 import { FluidPageStack } from './FluidPageStack';
@@ -102,7 +103,7 @@ export function FourWayFeed({
             ? rankPostsForUser(filtered, interestScores)
             : rankPostsByEngagement(filtered);
         const withAds =
-          lane.id === 'photos' || lane.id === 'community'
+          lane.id === 'form' || lane.id === 'community'
             ? ranked.map((post, index) => ({
                 type: 'post' as const,
                 id: post.id,
@@ -439,6 +440,17 @@ export function FourWayFeed({
               placement: 'feed_scroll',
             })
           }
+        />
+      );
+    }
+    if (feedItem.post.media_type === 'form') {
+      return (
+        <WorkoutFormSlide
+          post={feedItem.post}
+          height={screenH}
+          bottomInset={cardInset}
+          theme={cardTheme}
+          {...handlers}
         />
       );
     }

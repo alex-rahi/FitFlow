@@ -44,7 +44,7 @@ const LANE_THEMES: Record<FeedLaneId, FeedTheme> = {
     ambientA: 'rgba(244,196,48,0.15)',
     ambientB: 'rgba(60,50,10,0.38)',
   },
-  photos: {
+  form: {
     accent: '#A855F7',
     accentSoft: 'rgba(168,85,247,0.32)',
     glow: 'rgba(168,85,247,0.2)',
