@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     storage_bucket_thumbnails: str = "thumbnails"
     admin_secret: str = "placeholder-admin-secret"
     use_placeholders: bool = True
+    use_local_yolo: bool = False
+    worker_url: str = "http://localhost:8001"
+    uploads_dir: str = "data/uploads"
 
     @property
     def cors_origin_list(self) -> list[str]:

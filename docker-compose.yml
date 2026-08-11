@@ -22,24 +22,35 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      USE_LOCAL_YOLO: "true"
+      WORKER_URL: http://worker:8001
+      UPLOADS_DIR: /data/uploads
     depends_on:
       db:
         condition: service_healthy
+      worker:
+        condition: service_started
     volumes:
       - ./backend:/app
+      - ./data/uploads:/data/uploads
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
     build: ./workers
+    ports:
+      - "8001:8001"
     env_file: .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres
+      UPLOADS_DIR: /data/uploads
+      YOLO_MODEL_PATH: models/yolov8n.pt
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./workers:/app
-    command: python -m app.main
+      - ./data/uploads:/data/uploads
+    command: uvicorn app.http_server:app --host 0.0.0.0 --port 8001 --reload
 
   admin:
     build: ./apps/admin

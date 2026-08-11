@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, notifications, posts, profiles, social
+from app.api import admin, moderation, notifications, posts, profiles, social
 from app.config import settings
 from app.db.pool import close_pool, get_pool
 from app.middleware.errors import register_exception_handlers
@@ -45,6 +45,7 @@ app.include_router(posts.router, prefix="/api/v1")
 app.include_router(social.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(moderation.router, prefix="/api/v1")
 
 
 @app.get("/health")
@@ -53,4 +54,5 @@ async def health():
         "status": "ok",
         "service": "gymtok-api",
         "placeholder_mode": settings.use_placeholders,
+        "local_yolo": settings.use_local_yolo,
     }

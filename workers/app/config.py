@@ -9,10 +9,12 @@ class WorkerSettings(BaseSettings):
     frame_extract_interval: int = 2
     yolo_model_path: str = "models/yolov8n.pt"
     moderation_threshold: float = 0.7
+    uploads_dir: str = "/data/uploads"
     storage_bucket_raw: str = "raw-uploads"
     storage_bucket_processed: str = "processed-videos"
     storage_bucket_thumbnails: str = "thumbnails"
     use_placeholders: bool = True
+    http_port: int = 8001
 
     class Config:
         env_file = ".env"
