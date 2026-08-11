@@ -1,30 +1,65 @@
-export type FeedCategoryId = 'main_feed' | 'meal_prep' | 'nutrition' | 'advice' | 'prs';
+export type PostCategoryId = 'meal_prep' | 'nutrition' | 'advice' | 'prs';
 
-export type UploadCategoryId = Exclude<FeedCategoryId, 'main_feed'>;
+export type FeedViewId = 'feed' | 'recipes' | 'community';
 
-export type FeedLayoutType = 'scroll' | 'grid' | 'columns' | 'thread';
+export type ApiFeedCategory = PostCategoryId | 'main_feed';
 
-export interface FeedCategory {
-  id: FeedCategoryId;
+export type UploadCategoryId = PostCategoryId;
+
+export type FeedLayoutType = 'scroll' | 'grid' | 'thread';
+
+export interface PostCategory {
+  id: PostCategoryId;
+  label: string;
+  description: string;
+}
+
+export interface FeedView {
+  id: FeedViewId;
   label: string;
   description: string;
   layout: FeedLayoutType;
 }
 
-export const FEED_CATEGORIES: FeedCategory[] = [
-  { id: 'main_feed', label: 'Main Feed', description: 'All videos from people you follow', layout: 'scroll' },
-  { id: 'meal_prep', label: 'Meal Prep', description: 'Batch cooking and weekly prep routines', layout: 'scroll' },
-  { id: 'nutrition', label: 'Nutrition', description: 'Macros, meals, and fueling strategies', layout: 'columns' },
-  { id: 'advice', label: 'Advice', description: 'Community threads, form checks, and coaching', layout: 'thread' },
-  { id: 'prs', label: 'PRs', description: 'Personal records and milestone lifts', layout: 'scroll' },
+export const POST_CATEGORIES: PostCategory[] = [
+  { id: 'meal_prep', label: 'Meal Prep', description: 'Batch cooking and weekly prep routines' },
+  { id: 'nutrition', label: 'Nutrition', description: 'Macros, meals, and fueling strategies' },
+  { id: 'advice', label: 'Advice', description: 'Form checks, coaching, and Q&A' },
+  { id: 'prs', label: 'PRs', description: 'Personal records and milestone lifts' },
 ];
 
-export const UPLOAD_CATEGORIES = FEED_CATEGORIES.filter((c) => c.id !== 'main_feed');
+export const FEED_VIEWS: FeedView[] = [
+  { id: 'feed', label: 'Feed', description: 'Workout videos and PRs', layout: 'scroll' },
+  { id: 'recipes', label: 'Recipes', description: 'Meal prep and nutrition', layout: 'grid' },
+  { id: 'community', label: 'Community', description: 'Threads and coaching', layout: 'thread' },
+];
+
+export const UPLOAD_CATEGORIES = POST_CATEGORIES;
+
+export const RECIPE_CATEGORIES: PostCategoryId[] = ['meal_prep', 'nutrition'];
+
+const MAIN_FEED_EXCLUDED: PostCategoryId[] = ['meal_prep', 'nutrition', 'advice'];
 
 export function getCategoryLabel(id?: string | null): string | null {
-  return FEED_CATEGORIES.find((c) => c.id === id)?.label ?? null;
+  return POST_CATEGORIES.find((c) => c.id === id)?.label ?? null;
 }
 
-export function getCategoryLayout(id: FeedCategoryId): FeedLayoutType {
-  return FEED_CATEGORIES.find((c) => c.id === id)?.layout ?? 'scroll';
+export function getFeedViewLayout(id: FeedViewId): FeedLayoutType {
+  return FEED_VIEWS.find((v) => v.id === id)?.layout ?? 'scroll';
+}
+
+export function filterPostsForFeedView<T extends { category?: string | null }>(
+  posts: T[],
+  view: FeedViewId,
+): T[] {
+  switch (view) {
+    case 'feed':
+      return posts.filter(
+        (post) => !MAIN_FEED_EXCLUDED.includes(post.category as PostCategoryId),
+      );
+    case 'recipes':
+      return posts.filter((post) => RECIPE_CATEGORIES.includes(post.category as PostCategoryId));
+    case 'community':
+      return posts.filter((post) => post.category === 'advice');
+  }
 }

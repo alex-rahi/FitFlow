@@ -202,7 +202,7 @@ export function ThreadFeedLayout({
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: Spacing.md, paddingTop: 100, paddingBottom: 120 },
+  list: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xl },
   communityHeader: {
     marginBottom: Spacing.md,
     paddingBottom: Spacing.md,

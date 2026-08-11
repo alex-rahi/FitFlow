@@ -53,7 +53,7 @@ export function GridFeedLayout({ posts, onLike, onOpen }: Props) {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: Spacing.md, paddingTop: 100, paddingBottom: 120 },
+  list: { paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Spacing.xl },
   row: { gap: CARD_GAP, marginBottom: CARD_GAP },
   card: {
     width: CARD_WIDTH,

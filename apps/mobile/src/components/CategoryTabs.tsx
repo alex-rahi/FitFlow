@@ -1,10 +1,10 @@
 import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FEED_CATEGORIES, FeedCategoryId } from '../constants/categories';
+import { FEED_VIEWS, FeedViewId } from '../constants/categories';
 import { Colors, Radius, Spacing } from '../constants/theme';
 
 interface Props {
-  selected: FeedCategoryId;
-  onSelect: (id: FeedCategoryId) => void;
+  selected: FeedViewId;
+  onSelect: (id: FeedViewId) => void;
 }
 
 export function CategoryTabs({ selected, onSelect }: Props) {
@@ -15,16 +15,16 @@ export function CategoryTabs({ selected, onSelect }: Props) {
       contentContainerStyle={styles.row}
       style={styles.container}
     >
-      {FEED_CATEGORIES.map((cat) => {
-        const active = selected === cat.id;
+      {FEED_VIEWS.map((view) => {
+        const active = selected === view.id;
         return (
           <TouchableOpacity
-            key={cat.id}
+            key={view.id}
             style={[styles.chip, active && styles.chipActive]}
-            onPress={() => onSelect(cat.id)}
+            onPress={() => onSelect(view.id)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.label, active && styles.labelActive]}>{cat.label}</Text>
+            <Text style={[styles.label, active && styles.labelActive]}>{view.label}</Text>
           </TouchableOpacity>
         );
       })}
