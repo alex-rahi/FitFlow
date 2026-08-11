@@ -23,6 +23,7 @@ export interface VideoPost {
   category?: string;
   media_type?: 'video' | 'photo' | 'text';
   photo_uri?: string | null;
+  topics?: string[];
   created_at?: string;
   like_count: number;
   comment_count: number;
@@ -41,6 +42,7 @@ interface VideoCardProps {
   immersive?: boolean;
   bottomInset?: number;
   accentColor?: string;
+  interestHint?: string | null;
 }
 
 function WebVideo({ uri }: { uri: string }) {
@@ -73,6 +75,7 @@ export function VideoCard({
   immersive = false,
   bottomInset = 64,
   accentColor: accentOverride,
+  interestHint,
 }: VideoCardProps) {
   const isPhoto = post.media_type === 'photo';
   const accent = accentOverride ?? getCategoryAccent(post.category);
@@ -243,10 +246,17 @@ export function VideoCard({
         </View>
 
         <View style={styles.bottomInfo}>
-          <View style={[styles.categoryPill, { backgroundColor: accentSoft, borderColor: accentBorder }]}>
-            <Text style={[styles.categoryText, { color: accent }]}>
-              {(post.category ?? 'fitness').replace('_', ' ')}
-            </Text>
+          {interestHint ? (
+            <View style={[styles.interestPill, { borderColor: accentBorder, backgroundColor: accentSoft }]}>
+              <Text style={[styles.interestText, { color: accent }]}>For you · {interestHint}</Text>
+            </View>
+          ) : null}
+          <View style={styles.metaRow}>
+            <View style={[styles.categoryPill, { backgroundColor: accentSoft, borderColor: accentBorder }]}>
+              <Text style={[styles.categoryText, { color: accent }]}>
+                {isPhoto ? 'Photo' : 'Video'} · {(post.category ?? 'fitness').replace('_', ' ')}
+              </Text>
+            </View>
           </View>
           <Text style={styles.username}>@{post.author?.username ?? 'user'}</Text>
           {post.caption ? (
@@ -308,6 +318,16 @@ const styles = StyleSheet.create({
   actionIcon: { fontSize: 22, color: Colors.textPrimary },
   actionCount: { color: Colors.textPrimary, fontSize: 11, fontWeight: '700', marginTop: 2 },
   bottomInfo: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
+  interestPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  interestText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
+  metaRow: { flexDirection: 'row', gap: Spacing.xs },
   categoryPill: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,

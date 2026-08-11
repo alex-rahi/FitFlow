@@ -89,9 +89,11 @@ export function filterPostsForLane<T extends { category?: string | null; media_t
 ): T[] {
   if (laneId === 'photos') return filterPostsForFeedView(posts, 'photos');
   if (laneId === 'community') return filterPostsForFeedView(posts, 'community');
-  const videos = posts.filter((post) => isVideoPost(post) && post.category !== 'advice');
-  if (laneId === 'main_feed') return videos;
-  return videos.filter((post) => post.category === laneId);
+  const scrollMedia = posts.filter(
+    (post) => (isVideoPost(post) || isPhotoPost(post)) && post.category !== 'advice',
+  );
+  if (laneId === 'main_feed') return scrollMedia;
+  return scrollMedia.filter((post) => post.category === laneId);
 }
 
 export function getCategoryLabel(category?: string | null): string {

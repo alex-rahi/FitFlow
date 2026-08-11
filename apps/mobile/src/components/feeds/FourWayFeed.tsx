@@ -11,9 +11,11 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { FEED_LANES, FeedLaneId, filterPostsForLane } from '../../constants/categories';
-import { rankPostsByEngagement } from '../../lib/feedRanking';
+import { rankPostsByEngagement, rankPostsForUser, getMatchingInterest } from '../../lib/feedRanking';
 import { buildScrollFeedItems, ScrollFeedItem } from '../../lib/feedItems';
 import { getLaneTheme, mixPointer, webAmbientStyle } from '../../lib/feedTheme';
+import { recordLaneVisit, recordPostSignal } from '../../lib/userInterests';
+import { useUserInterests } from '../../hooks/useUserInterests';
 import { analytics } from '../../lib/analytics';
 import { Colors, Spacing } from '../../constants/theme';
 import { VideoCard, VideoPost } from '../VideoCard';
@@ -23,6 +25,7 @@ import { WatchFocusFrame, getWatchScreenSize } from './WatchFocusFrame';
 
 const SWIPE_THRESHOLD = 52;
 const HUD_HIDE_MS = 3200;
+const DWELL_MS = 2500;
 
 function laneItemAt(lanes: Lane[], laneIndex: number, itemIndex: number): ScrollFeedItem | null {
   if (laneIndex < 0 || laneIndex >= lanes.length) return null;
@@ -55,11 +58,13 @@ export function FourWayFeed({
   onComment,
 }: Props) {
   const { width } = useWindowDimensions();
+  const { scores: interestScores, topInterests } = useUserInterests();
   const [laneIdx, setLaneIdx] = useState(0);
   const [itemIdx, setItemIdx] = useState(0);
   const [hudVisible, setHudVisible] = useState(true);
   const [pointer, setPointer] = useState({ x: 0.5, y: 0.4 });
   const seenImpressions = useRef(new Set<string>());
+  const impressionStarted = useRef<number | null>(null);
   const hudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -75,7 +80,10 @@ export function FourWayFeed({
     () =>
       FEED_LANES.map((lane) => {
         const filtered = filterPostsForLane(posts, lane.id);
-        const ranked = lane.id === 'main_feed' ? rankPostsByEngagement(filtered) : filtered;
+        const ranked =
+          lane.id === 'main_feed'
+            ? rankPostsForUser(filtered, interestScores)
+            : rankPostsByEngagement(filtered);
         const withAds =
           lane.id === 'photos' || lane.id === 'community'
             ? ranked.map((post, index) => ({
@@ -87,7 +95,7 @@ export function FourWayFeed({
             : buildScrollFeedItems(ranked);
         return { ...lane, items: withAds };
       }),
-    [posts],
+    [posts, interestScores],
   );
 
   const lane = lanes[laneIdx];
@@ -126,9 +134,9 @@ export function FourWayFeed({
   }, [laneIdx, themeBlend]);
 
   const trackImpression = useCallback((current: ScrollFeedItem) => {
-    if (seenImpressions.current.has(current.id)) return;
-    seenImpressions.current.add(current.id);
     if (current.type === 'ad') {
+      if (seenImpressions.current.has(current.id)) return;
+      seenImpressions.current.add(current.id);
       analytics.track('ad_impression', {
         ad_id: current.ad.id,
         brand: current.ad.brand,
@@ -136,14 +144,29 @@ export function FourWayFeed({
       });
       return;
     }
-    analytics.track('video_impression', {
-      post_id: current.post.id,
-      feed_view: 'feed',
-      category: current.post.category,
-      lane: lane.id,
-      index: current.postIndex,
-    });
+
+    const post = current.post;
+    if (!seenImpressions.current.has(current.id)) {
+      seenImpressions.current.add(current.id);
+      recordPostSignal('impression', post);
+      analytics.track('video_impression', {
+        post_id: post.id,
+        feed_view: 'feed',
+        category: post.category,
+        media_type: post.media_type,
+        lane: lane.id,
+        index: current.postIndex,
+      });
+    }
+    impressionStarted.current = Date.now();
   }, [lane?.id]);
+
+  const trackDwell = useCallback((current: ScrollFeedItem | undefined) => {
+    if (!current || current.type === 'ad' || impressionStarted.current == null) return;
+    const elapsed = Date.now() - impressionStarted.current;
+    impressionStarted.current = null;
+    if (elapsed >= DWELL_MS) recordPostSignal('dwell', current.post);
+  }, []);
 
   useEffect(() => {
     if (item) trackImpression(item);
@@ -212,21 +235,25 @@ export function FourWayFeed({
 
   const changeLane = useCallback((next: number, dir: 'left' | 'right') => {
     if (next < 0 || next >= lanes.length || next === laneIdx) return;
+    trackDwell(item);
     animateTransition(dir, () => {
       setLaneIdx(next);
       setItemIdx(0);
+      recordLaneVisit(lanes[next].id);
       analytics.track('feed_lane_change', {
         lane_id: lanes[next].id,
         lane_label: lanes[next].label,
         feed_view: 'feed',
       });
     });
-  }, [animateTransition, laneIdx, lanes]);
+  }, [animateTransition, item, laneIdx, lanes, trackDwell]);
 
   const navigate = useCallback((dir: 'up' | 'down' | 'left' | 'right') => {
     if (dir === 'up' && itemIdx < items.length - 1) {
+      trackDwell(item);
       animateTransition('up', () => setItemIdx((i) => i + 1));
     } else if (dir === 'down' && itemIdx > 0) {
+      trackDwell(item);
       animateTransition('down', () => setItemIdx((i) => i - 1));
     } else if (dir === 'left') {
       changeLane(laneIdx + 1, 'left');
@@ -235,7 +262,7 @@ export function FourWayFeed({
     } else {
       resetDrag();
     }
-  }, [animateTransition, changeLane, itemIdx, items.length, laneIdx, resetDrag]);
+  }, [animateTransition, changeLane, item, itemIdx, items.length, laneIdx, resetDrag, trackDwell]);
 
   const panResponder = useMemo(
     () =>
@@ -340,6 +367,11 @@ export function FourWayFeed({
   const prevLaneItem = laneItemAt(lanes, laneIdx - 1, itemIdx);
   const nextLaneItem = laneItemAt(lanes, laneIdx + 1, itemIdx);
 
+  const interestHint =
+    lane?.id === 'main_feed' && item?.type === 'post'
+      ? getMatchingInterest(item.post, interestScores)?.label ?? null
+      : null;
+
   if (loading && posts.length === 0) {
     return (
       <View style={[styles.center, { height }, ambientStyle]}>
@@ -418,6 +450,7 @@ export function FourWayFeed({
           prevLaneLabel={prevLane?.label}
           nextLaneLabel={nextLane?.label}
           hudOpacity={hudOpacity}
+          topInterests={lane?.id === 'main_feed' ? topInterests : []}
         >
           {item.type === 'ad' ? (
             <AdPlaceholder
@@ -447,6 +480,7 @@ export function FourWayFeed({
               height={screenH}
               bottomInset={cardInset}
               immersive
+              interestHint={interestHint}
               onLike={() => onLike(item.post.id)}
               onComment={() => onComment(item.post.id)}
             />

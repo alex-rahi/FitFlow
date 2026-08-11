@@ -9,6 +9,7 @@ import { api } from '../../src/lib/api';
 import { Colors } from '../../src/constants/theme';
 import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 import { analytics } from '../../src/lib/analytics';
+import { recordPostSignal } from '../../src/lib/userInterests';
 
 export const FEED_TAB_OVERLAY = 64;
 
@@ -42,16 +43,20 @@ export default function FeedScreen() {
   );
 
   const handleLike = async (postId: string) => {
+    const post = posts.find((p) => p.id === postId);
     try {
       await api.likePost(postId);
-      analytics.track('like', { post_id: postId, feed_view: 'feed' });
+      analytics.track('like', { post_id: postId, feed_view: 'feed', category: post?.category });
+      if (post) recordPostSignal('like', post);
       setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, like_count: p.like_count + 1 } : p)));
     } catch { /* ignore */ }
   };
 
   const handleCommentAdded = () => {
     if (commentTarget) {
+      const post = posts.find((p) => p.id === commentTarget.postId);
       analytics.track('comment', { post_id: commentTarget.postId, feed_view: 'feed' });
+      if (post) recordPostSignal('comment', post);
       setPosts((prev) => prev.map((p) =>
         p.id === commentTarget.postId ? { ...p, comment_count: p.comment_count + 1 } : p,
       ));
