@@ -9,7 +9,7 @@ const LANE_ICONS: Record<FeedLaneId, string> = {
   nutrition: '🥗',
   prs: '🏆',
   advice: '💡',
-  form: '📋',
+  form: '🎯',
   community: '💬',
 };
 

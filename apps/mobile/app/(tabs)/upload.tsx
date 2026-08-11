@@ -16,13 +16,17 @@ import { Input } from '../../src/components/Input';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import {
-  getCategoryLabel,
   getUploadDestinationForCategory,
   MediaType,
-  FORM_CATEGORIES,
   PostCategoryId,
+  getCategoryLabel,
 } from '../../src/constants/categories';
-import { FORM_UPLOAD_DISCLAIMER, WorkoutFormData } from '../../src/constants/workoutForm';
+import {
+  FORM_UPLOAD_DISCLAIMER,
+  WorkoutFormData,
+  formCheckCaption,
+  parseFocusPoints,
+} from '../../src/constants/workoutForm';
 import { Colors, Radius, Spacing, isDemoMode, isLocalYoloMode } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
@@ -47,11 +51,8 @@ export default function UploadScreen() {
   const [category, setCategory] = useState<PostCategoryId>('workouts');
   const [mediaType, setMediaType] = useState<MediaType>('video');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
-  const [formTitle, setFormTitle] = useState('');
   const [exercise, setExercise] = useState('');
-  const [sets, setSets] = useState('');
-  const [reps, setReps] = useState('');
-  const [weight, setWeight] = useState('');
+  const [focusPoints, setFocusPoints] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formDisclaimerAccepted, setFormDisclaimerAccepted] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -66,12 +67,12 @@ export default function UploadScreen() {
     setMediaUri(null);
     setFormDisclaimerAccepted(false);
     if (type === 'form') {
-      setCategory(FORM_CATEGORIES.includes(category) ? category : FORM_CATEGORIES[0]);
+      setCategory('workouts');
     }
   };
 
   const pickMedia = async () => {
-    if (isText || isForm) return;
+    if (isText) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       quality: 0.8,
@@ -80,22 +81,19 @@ export default function UploadScreen() {
   };
 
   const buildWorkoutForm = (): WorkoutFormData | null => {
-    if (!formTitle.trim() || !exercise.trim() || !sets.trim() || !reps.trim()) return null;
+    const points = parseFocusPoints(focusPoints);
+    if (!exercise.trim() || points.length === 0) return null;
     return {
-      title: formTitle.trim(),
-      entries: [{
-        exercise: exercise.trim(),
-        sets: sets.trim(),
-        reps: reps.trim(),
-        weight: weight.trim() || undefined,
-      }],
+      exercise: exercise.trim(),
+      focus_points: points,
       notes: formNotes.trim() || undefined,
+      request_feedback: true,
     };
   };
 
   const handleUpload = async () => {
-    if (mediaType === 'video' && !mediaUri) {
-      notify('Missing media', 'Select a video first.');
+    if ((mediaType === 'video' || isForm) && !mediaUri) {
+      notify('Missing clip', `Select a form-check video first.`);
       return;
     }
     if (isText && !caption.trim()) {
@@ -104,11 +102,11 @@ export default function UploadScreen() {
     }
     if (isForm) {
       if (!buildWorkoutForm()) {
-        notify('Incomplete form', 'Fill in session title, exercise, sets, and reps.');
+        notify('Incomplete form', 'Add an exercise and at least one cue to check.');
         return;
       }
       if (!formDisclaimerAccepted) {
-        notify('Disclaimer required', 'Accept the workout log guidelines before publishing.');
+        notify('Disclaimer required', 'Accept the form-check guidelines before publishing.');
         return;
       }
     }
@@ -124,18 +122,18 @@ export default function UploadScreen() {
       const workoutForm = isForm ? buildWorkoutForm() : null;
       const destination = getUploadDestinationForCategory(category, mediaType);
       const post = await api.createPost(
-        isForm ? workoutForm?.title : caption || undefined,
-        category,
+        isForm && workoutForm ? formCheckCaption(workoutForm) : caption || undefined,
+        isForm ? 'workouts' : category,
         isText ? 'text' : mediaType,
         workoutForm,
       );
 
-      if (mediaType === 'video' && mediaUri) {
+      if ((mediaType === 'video' || isForm) && mediaUri) {
         if (isLocalYoloMode()) {
-          setStatus('Uploading media...');
+          setStatus('Uploading clip...');
           await api.uploadMediaFile(post.id, mediaUri);
         } else if (!isDemoMode()) {
-          setStatus('Uploading video...');
+          setStatus('Uploading clip...');
           const { storage_path } = await api.getUploadUrl(post.id);
           await uploadVideoFile(storage_path, mediaUri);
           await api.confirmUpload(post.id);
@@ -147,7 +145,7 @@ export default function UploadScreen() {
 
       analytics.track('upload_complete', {
         post_id: post.id,
-        category,
+        category: isForm ? 'workouts' : category,
         feed_view: destination,
         media_type: mediaType,
       });
@@ -155,11 +153,8 @@ export default function UploadScreen() {
       notify('Published', isForm ? 'Live in Form feed.' : 'Live in feed.');
       setCaption('');
       setMediaUri(null);
-      setFormTitle('');
       setExercise('');
-      setSets('');
-      setReps('');
-      setWeight('');
+      setFocusPoints('');
       setFormNotes('');
       setFormDisclaimerAccepted(false);
       setStatus('');
@@ -188,38 +183,28 @@ export default function UploadScreen() {
 
         {isForm ? (
           <View style={styles.formSection}>
-            <Text style={styles.formTitle}>Workout log</Text>
-            <Text style={styles.formHint}>Structured entries appear in the Form feed lane.</Text>
-            <View style={styles.catRow}>
-              {FORM_CATEGORIES.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.chipSm, category === cat && styles.chipActive]}
-                  onPress={() => setCategory(cat)}
-                >
-                  <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
-                    {getCategoryLabel(cat)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Input placeholder="Session title (e.g. Leg day)" value={formTitle} onChangeText={setFormTitle} />
-            <Input placeholder="Exercise" value={exercise} onChangeText={setExercise} />
-            <View style={styles.formRow}>
-              <View style={styles.formField}>
-                <Input placeholder="Sets" value={sets} onChangeText={setSets} keyboardType="numeric" />
-              </View>
-              <View style={styles.formField}>
-                <Input placeholder="Reps" value={reps} onChangeText={setReps} keyboardType="numeric" />
-              </View>
-              <View style={styles.formField}>
-                <Input placeholder="Weight (opt.)" value={weight} onChangeText={setWeight} />
-              </View>
-            </View>
+            <Text style={styles.formTitle}>Form check</Text>
+            <Text style={styles.formHint}>
+              Upload a technique clip with cues you want feedback on. Appears in the Form lane.
+            </Text>
+            <Input placeholder="Exercise (e.g. Back squat)" value={exercise} onChangeText={setExercise} />
+            <Input
+              placeholder={'Cues to check — one per line\nKnee tracking\nDepth below parallel'}
+              value={focusPoints}
+              onChangeText={setFocusPoints}
+              multiline
+            />
             <Input placeholder="Notes (optional)" value={formNotes} onChangeText={setFormNotes} multiline />
+            <Button
+              title={mediaUri ? 'Change form-check clip' : 'Choose form-check clip'}
+              onPress={pickMedia}
+              variant="secondary"
+              disabled={uploading}
+            />
             <View style={styles.disclaimerBox}>
               <Text style={styles.disclaimerTitle}>{FORM_UPLOAD_DISCLAIMER.title}</Text>
               <Text style={styles.disclaimerBody}>{FORM_UPLOAD_DISCLAIMER.body}</Text>
+              <Text style={styles.disclaimerLiability}>{FORM_UPLOAD_DISCLAIMER.liability}</Text>
             </View>
             <TouchableOpacity
               style={styles.checkboxRow}
@@ -302,9 +287,7 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Colors.red },
   formSection: { gap: Spacing.sm },
   formTitle: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  formHint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.xs },
-  formRow: { flexDirection: 'row', gap: Spacing.sm },
-  formField: { flex: 1 },
+  formHint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.xs, lineHeight: 17 },
   disclaimerBox: {
     backgroundColor: Colors.cardBg,
     borderRadius: Radius.md,
@@ -315,6 +298,7 @@ const styles = StyleSheet.create({
   },
   disclaimerTitle: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700' },
   disclaimerBody: { color: Colors.textMuted, fontSize: 12, lineHeight: 18 },
+  disclaimerLiability: { color: Colors.textMuted, fontSize: 11, lineHeight: 16, fontStyle: 'italic', marginTop: Spacing.xs },
   checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginTop: Spacing.xs },
   checkbox: {
     width: 22,

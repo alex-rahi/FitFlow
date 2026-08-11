@@ -23,7 +23,7 @@ export interface FeedView {
 
 export const TAB_VIEWS: FeedView[] = [
   { id: 'feed', label: 'Feed', description: 'Fitness videos ranked by engagement', layout: 'scroll' },
-  { id: 'form', label: 'Form', description: 'Structured workout logs from the community', layout: 'scroll' },
+  { id: 'form', label: 'Form', description: 'Form-check clips and technique feedback from the community', layout: 'scroll' },
   { id: 'community', label: 'Community', description: 'Training tips and discussion threads', layout: 'thread' },
 ];
 
@@ -38,7 +38,7 @@ export const FEED_LANES: { id: FeedLaneId; label: string }[] = [
   { id: 'community', label: 'Talk' },
 ];
 
-export const FORM_CATEGORIES: PostCategoryId[] = ['workouts', 'prs'];
+export const FORM_CATEGORIES: PostCategoryId[] = ['workouts'];
 
 export function isEquipmentPost(post: {
   category?: string | null;

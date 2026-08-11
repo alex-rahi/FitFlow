@@ -1,10 +1,21 @@
-import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Animated, Easing, ScrollView } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+  Animated,
+  Easing,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import { createElement } from 'react';
 import { VideoPost } from './VideoCard';
 import { FeedTheme } from '../lib/feedTheme';
-import { formatWorkoutSet } from '../constants/workoutForm';
-import { getCategoryLabel } from '../constants/categories';
-import { Colors, Radius, Spacing } from '../constants/theme';
+import { FORM_UPLOAD_DISCLAIMER } from '../constants/workoutForm';
+import { resolvePlaybackUrl } from '../lib/videoUrl';
+import { Colors, Radius, Spacing, USE_PLACEHOLDERS } from '../constants/theme';
 
 interface Props {
   post: VideoPost;
@@ -15,10 +26,25 @@ interface Props {
   onComment: () => void;
 }
 
+const PLACEHOLDER_GRADIENTS = ['#0d0d12', '#12101a', '#0a1018', '#100a0a'];
+
+function WebVideo({ uri }: { uri: string }) {
+  return createElement('video', {
+    src: uri,
+    autoPlay: true,
+    loop: true,
+    muted: true,
+    playsInline: true,
+    style: { width: '100%', height: '100%', objectFit: 'cover' as const },
+  });
+}
+
 export function WorkoutFormSlide({ post, height, bottomInset = 64, theme, onLike, onComment }: Props) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
   const form = post.workout_form;
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(!USE_PLACEHOLDERS);
 
   useEffect(() => {
     fadeAnim.setValue(0);
@@ -39,17 +65,32 @@ export function WorkoutFormSlide({ post, height, bottomInset = 64, theme, onLike
     ]).start();
   }, [post.id, fadeAnim, slideAnim]);
 
-  const ambientWeb = Platform.OS === 'web' ? {
-    backgroundColor: '#060608',
-    // @ts-expect-error web-only
-    backgroundImage: `radial-gradient(ellipse 60% 50% at 25% 25%, ${theme.glow} 0%, transparent 60%), radial-gradient(ellipse 50% 45% at 80% 75%, ${theme.ambientB} 0%, #060608 70%)`,
-  } : { backgroundColor: '#060608' };
+  useEffect(() => {
+    let active = true;
+    if (USE_PLACEHOLDERS) {
+      setLoadingVideo(false);
+      return;
+    }
+    setLoadingVideo(true);
+    resolvePlaybackUrl(post)
+      .then((url) => {
+        if (active) setPlaybackUrl(url);
+      })
+      .finally(() => {
+        if (active) setLoadingVideo(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [post]);
 
-  const title = form?.title ?? post.caption ?? 'Workout log';
-  const entries = form?.entries ?? [];
+  const exercise = form?.exercise ?? post.caption ?? 'Form check';
+  const focusPoints = form?.focus_points ?? [];
+  const videoH = Math.round(height * 0.52);
+  const showVideo = playbackUrl && Platform.OS === 'web';
 
   return (
-    <View style={[styles.card, { height }, ambientWeb]}>
+    <View style={[styles.card, { height, backgroundColor: '#060608' }]}>
       <View style={[styles.glowLine, { backgroundColor: theme.accent, shadowColor: theme.accent }]} />
 
       <Animated.View
@@ -58,35 +99,49 @@ export function WorkoutFormSlide({ post, height, bottomInset = 64, theme, onLike
           { paddingBottom: bottomInset, opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <View style={styles.header}>
-          <Text style={[styles.badge, { color: theme.accent, borderColor: `${theme.accent}55` }]}>
-            {getCategoryLabel(post.category)} · Form
-          </Text>
-          <Text style={[styles.author, { color: theme.accent }]}>@{post.author?.username ?? 'user'}</Text>
+        <View style={[styles.videoWrap, { height: videoH, borderColor: `${theme.accent}33` }]}>
+          {loadingVideo ? (
+            <ActivityIndicator color={theme.accent} />
+          ) : showVideo ? (
+            <WebVideo uri={playbackUrl} />
+          ) : (
+            <View style={[styles.videoPlaceholder, { backgroundColor: PLACEHOLDER_GRADIENTS[0] }]}>
+              <Text style={[styles.playIcon, { color: theme.accent }]}>▶</Text>
+              <Text style={styles.placeholderLabel}>Form-check clip</Text>
+            </View>
+          )}
+          <View style={[styles.videoBadge, { backgroundColor: `${theme.accent}22`, borderColor: `${theme.accent}55` }]}>
+            <Text style={[styles.videoBadgeText, { color: theme.accent }]}>Form</Text>
+          </View>
         </View>
 
-        <Text style={styles.title}>{title}</Text>
-
-        <ScrollView style={styles.tableScroll} showsVerticalScrollIndicator={false}>
-          <View style={[styles.table, { borderColor: `${theme.accent}33` }]}>
-            <View style={[styles.tableHeader, { backgroundColor: `${theme.accent}14` }]}>
-              <Text style={[styles.colExercise, styles.headerText]}>Exercise</Text>
-              <Text style={[styles.colSets, styles.headerText]}>Work</Text>
-            </View>
-            {entries.length > 0 ? entries.map((entry, i) => (
-              <View key={`${entry.exercise}-${i}`} style={styles.tableRow}>
-                <Text style={styles.colExercise}>{entry.exercise}</Text>
-                <Text style={[styles.colSets, { color: theme.accent }]}>{formatWorkoutSet(entry)}</Text>
-              </View>
-            )) : (
-              <View style={styles.tableRow}>
-                <Text style={styles.emptyRow}>No exercises logged</Text>
-              </View>
-            )}
+        <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Text style={[styles.author, { color: theme.accent }]}>@{post.author?.username ?? 'user'}</Text>
+            {form?.request_feedback !== false ? (
+              <Text style={[styles.feedbackTag, { color: theme.accent }]}>Feedback welcome</Text>
+            ) : null}
           </View>
-          {form?.notes ? (
-            <Text style={styles.notes}>{form.notes}</Text>
+
+          <Text style={styles.exercise}>{exercise}</Text>
+
+          {focusPoints.length > 0 ? (
+            <View style={[styles.focusBox, { borderColor: `${theme.accent}33` }]}>
+              <Text style={styles.focusTitle}>Check these cues</Text>
+              {focusPoints.map((point) => (
+                <View key={point} style={styles.focusRow}>
+                  <Text style={[styles.focusDot, { color: theme.accent }]}>•</Text>
+                  <Text style={styles.focusText}>{point}</Text>
+                </View>
+              ))}
+            </View>
           ) : null}
+
+          {form?.notes ? <Text style={styles.notes}>{form.notes}</Text> : null}
+          {post.caption && post.caption !== exercise ? (
+            <Text style={styles.caption}>{post.caption}</Text>
+          ) : null}
+          <Text style={styles.liability}>{FORM_UPLOAD_DISCLAIMER.liability}</Text>
         </ScrollView>
 
         <View style={styles.actions}>
@@ -120,57 +175,62 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 12,
+    zIndex: 2,
   },
-  body: {
-    flex: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
+  body: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  videoWrap: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
   },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md },
-  badge: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+  videoPlaceholder: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  playIcon: { fontSize: 42, opacity: 0.7 },
+  placeholderLabel: { color: Colors.textMuted, fontSize: 12, marginTop: Spacing.sm, fontWeight: '600' },
+  videoBadge: {
+    position: 'absolute',
+    top: Spacing.sm,
+    left: Spacing.sm,
     borderWidth: 1,
     borderRadius: Radius.sm,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  author: { fontSize: 13, letterSpacing: 0.8, fontWeight: '700' },
-  title: {
+  videoBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  detailScroll: { flex: 1, marginBottom: Spacing.sm },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.xs },
+  author: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  feedbackTag: { fontSize: 11, fontWeight: '600', opacity: 0.9 },
+  exercise: {
     color: Colors.textPrimary,
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
-    lineHeight: 32,
-    letterSpacing: -0.3,
-    marginBottom: Spacing.md,
+    lineHeight: 30,
+    marginBottom: Spacing.sm,
   },
-  tableScroll: { flex: 1, marginBottom: Spacing.md },
-  table: {
+  focusBox: {
     borderWidth: 1,
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
-  tableHeader: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: Spacing.md },
-  headerText: { color: Colors.textMuted, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: Spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.borderSubtle,
-  },
-  colExercise: { flex: 1, color: Colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  colSets: { color: Colors.textSecondary, fontSize: 14, fontWeight: '700', minWidth: 88, textAlign: 'right' },
-  emptyRow: { color: Colors.textMuted, fontSize: 14, flex: 1 },
-  notes: {
+  focusTitle: {
     color: Colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: Spacing.md,
-    fontStyle: 'italic',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
   },
+  focusRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+  focusDot: { fontSize: 16, lineHeight: 20, fontWeight: '700' },
+  focusText: { flex: 1, color: Colors.textPrimary, fontSize: 14, lineHeight: 20 },
+  notes: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: Spacing.xs },
+  caption: { color: Colors.textMuted, fontSize: 13, lineHeight: 18 },
+  liability: { color: Colors.textMuted, fontSize: 10, lineHeight: 14, marginTop: Spacing.sm, opacity: 0.85 },
   actions: { flexDirection: 'row', gap: Spacing.md },
   glassBtn: {
     flexDirection: 'row',
