@@ -13,7 +13,7 @@ export interface FeedCategory {
 
 export const FEED_CATEGORIES: FeedCategory[] = [
   { id: 'main_feed', label: 'Main Feed', description: 'All videos from people you follow', layout: 'scroll' },
-  { id: 'meal_prep', label: 'Meal Prep', description: 'Batch cooking and weekly prep routines', layout: 'grid' },
+  { id: 'meal_prep', label: 'Meal Prep', description: 'Batch cooking and weekly prep routines', layout: 'scroll' },
   { id: 'nutrition', label: 'Nutrition', description: 'Macros, meals, and fueling strategies', layout: 'columns' },
   { id: 'advice', label: 'Advice', description: 'Community threads, form checks, and coaching', layout: 'thread' },
   { id: 'prs', label: 'PRs', description: 'Personal records and milestone lifts', layout: 'scroll' },
