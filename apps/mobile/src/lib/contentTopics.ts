@@ -62,7 +62,7 @@ export function getPostTopics(post: TopicPost): ContentTopic[] {
   const merged = [...new Set([...fromCategory, ...fromCaption])];
   if (merged.length > 0) return merged;
   if (post.category && post.category in TOPIC_LABELS) return [post.category as ContentTopic];
-  if (post.media_type === 'form') return ['workouts', 'prs'];
+  if (post.media_type === 'photo') return ['workouts'];
   return ['workouts'];
 }
 
@@ -76,7 +76,7 @@ export function laneToTopics(laneId: string): ContentTopic[] {
     case 'equipment': return ['equipment'];
     case 'nutrition': return ['nutrition', 'meal_prep'];
     case 'prs': return ['prs'];
-    case 'form': return ['workouts', 'prs'];
+    case 'photos': return ['workouts', 'prs'];
     case 'community': return ['advice'];
     default: return [];
   }

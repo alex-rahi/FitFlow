@@ -23,12 +23,12 @@ export default function FeedScreen() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [feed, forms, community] = await Promise.all([
+      const [feed, photos, community] = await Promise.all([
         api.getFeedView('feed'),
-        api.getFeedView('form'),
+        api.getFeedView('photos'),
         api.getFeedView('community'),
       ]);
-      setPosts([...feed.posts, ...forms.posts, ...community.posts]);
+      setPosts([...feed.posts, ...photos.posts, ...community.posts]);
     } catch {
       // ignore
     } finally {

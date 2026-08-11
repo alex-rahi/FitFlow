@@ -16,17 +16,13 @@ import { Input } from '../../src/components/Input';
 import { useAuth } from '../../src/context/AuthContext';
 import { api } from '../../src/lib/api';
 import {
+  getCategoryLabel,
   getUploadDestinationForCategory,
   MediaType,
+  PHOTO_CATEGORIES,
+  PHOTO_UPLOAD_DISCLAIMER,
   PostCategoryId,
-  getCategoryLabel,
 } from '../../src/constants/categories';
-import {
-  FORM_UPLOAD_DISCLAIMER,
-  WorkoutFormData,
-  formCheckCaption,
-  parseFocusPoints,
-} from '../../src/constants/workoutForm';
 import { Colors, Radius, Spacing, isDemoMode, isLocalYoloMode } from '../../src/constants/theme';
 import { analytics } from '../../src/lib/analytics';
 import { uploadVideoFile } from '../../src/lib/uploadVideo';
@@ -35,7 +31,7 @@ import { useScreenAnalytics } from '../../src/hooks/useScreenAnalytics';
 const UPLOAD_CATEGORIES: PostCategoryId[] = ['workouts', 'equipment', 'nutrition', 'prs', 'advice'];
 const MEDIA_TYPES: { id: MediaType; label: string }[] = [
   { id: 'video', label: 'Video' },
-  { id: 'form', label: 'Form' },
+  { id: 'photo', label: 'Photo' },
   { id: 'text', label: 'Thread' },
 ];
 
@@ -51,64 +47,44 @@ export default function UploadScreen() {
   const [category, setCategory] = useState<PostCategoryId>('workouts');
   const [mediaType, setMediaType] = useState<MediaType>('video');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
-  const [exercise, setExercise] = useState('');
-  const [focusPoints, setFocusPoints] = useState('');
-  const [formNotes, setFormNotes] = useState('');
-  const [formDisclaimerAccepted, setFormDisclaimerAccepted] = useState(false);
+  const [photoDisclaimerAccepted, setPhotoDisclaimerAccepted] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
   const isText = mediaType === 'text';
-  const isForm = mediaType === 'form';
+  const isPhoto = mediaType === 'photo';
 
   const selectMediaType = (type: MediaType) => {
     setMediaType(type);
     setMediaUri(null);
-    setFormDisclaimerAccepted(false);
-    if (type === 'form') {
-      setCategory('workouts');
+    setPhotoDisclaimerAccepted(false);
+    if (type === 'photo' && category === 'advice') {
+      setCategory(PHOTO_CATEGORIES[0]);
     }
   };
 
   const pickMedia = async () => {
     if (isText) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
+      mediaTypes: mediaType === 'video' ? ['videos'] : ['images'],
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) setMediaUri(result.assets[0].uri);
   };
 
-  const buildWorkoutForm = (): WorkoutFormData | null => {
-    const points = parseFocusPoints(focusPoints);
-    if (!exercise.trim() || points.length === 0) return null;
-    return {
-      exercise: exercise.trim(),
-      focus_points: points,
-      notes: formNotes.trim() || undefined,
-      request_feedback: true,
-    };
-  };
-
   const handleUpload = async () => {
-    if ((mediaType === 'video' || isForm) && !mediaUri) {
-      notify('Missing clip', `Select a form-check video first.`);
+    if (!isText && !mediaUri) {
+      notify('Missing media', `Select a ${mediaType} first.`);
       return;
     }
     if (isText && !caption.trim()) {
       notify('Empty', 'Write something first.');
       return;
     }
-    if (isForm) {
-      if (!buildWorkoutForm()) {
-        notify('Incomplete form', 'Add an exercise and at least one cue to check.');
-        return;
-      }
-      if (!formDisclaimerAccepted) {
-        notify('Disclaimer required', 'Accept the form-check guidelines before publishing.');
-        return;
-      }
+    if (isPhoto && !photoDisclaimerAccepted) {
+      notify('Disclaimer required', 'Accept the photo guidelines before publishing.');
+      return;
     }
     if (!isDemoMode() && !isLocalYoloMode() && !session) {
       setError('Log in to upload.');
@@ -119,21 +95,20 @@ export default function UploadScreen() {
     setError('');
     setStatus('Publishing...');
     try {
-      const workoutForm = isForm ? buildWorkoutForm() : null;
       const destination = getUploadDestinationForCategory(category, mediaType);
       const post = await api.createPost(
-        isForm && workoutForm ? formCheckCaption(workoutForm) : caption || undefined,
-        isForm ? 'workouts' : category,
+        caption || undefined,
+        category,
         isText ? 'text' : mediaType,
-        workoutForm,
+        mediaType === 'photo' ? mediaUri : null,
       );
 
-      if ((mediaType === 'video' || isForm) && mediaUri) {
+      if (!isText && mediaUri) {
         if (isLocalYoloMode()) {
-          setStatus('Uploading clip...');
-          await api.uploadMediaFile(post.id, mediaUri);
-        } else if (!isDemoMode()) {
-          setStatus('Uploading clip...');
+          setStatus('Uploading media...');
+          await api.uploadMediaFile(post.id, mediaUri, mediaType as 'video' | 'photo');
+        } else if (!isDemoMode() && mediaType === 'video') {
+          setStatus('Uploading video...');
           const { storage_path } = await api.getUploadUrl(post.id);
           await uploadVideoFile(storage_path, mediaUri);
           await api.confirmUpload(post.id);
@@ -145,18 +120,15 @@ export default function UploadScreen() {
 
       analytics.track('upload_complete', {
         post_id: post.id,
-        category: isForm ? 'workouts' : category,
+        category,
         feed_view: destination,
         media_type: mediaType,
       });
 
-      notify('Published', isForm ? 'Live in Form feed.' : 'Live in feed.');
+      notify('Published', 'Live in feed.');
       setCaption('');
       setMediaUri(null);
-      setExercise('');
-      setFocusPoints('');
-      setFormNotes('');
-      setFormDisclaimerAccepted(false);
+      setPhotoDisclaimerAccepted(false);
       setStatus('');
     } catch (err: any) {
       setError(err?.message ?? 'Upload failed');
@@ -181,40 +153,36 @@ export default function UploadScreen() {
           ))}
         </View>
 
-        {isForm ? (
-          <View style={styles.formSection}>
-            <Text style={styles.formTitle}>Form check</Text>
-            <Text style={styles.formHint}>
-              Upload a technique clip with cues you want feedback on. Appears in the Form lane.
-            </Text>
-            <Input placeholder="Exercise (e.g. Back squat)" value={exercise} onChangeText={setExercise} />
-            <Input
-              placeholder={'Cues to check — one per line\nKnee tracking\nDepth below parallel'}
-              value={focusPoints}
-              onChangeText={setFocusPoints}
-              multiline
-            />
-            <Input placeholder="Notes (optional)" value={formNotes} onChangeText={setFormNotes} multiline />
-            <Button
-              title={mediaUri ? 'Change form-check clip' : 'Choose form-check clip'}
-              onPress={pickMedia}
-              variant="secondary"
-              disabled={uploading}
-            />
+        {isPhoto ? (
+          <View style={styles.photoForm}>
+            <Text style={styles.formTitle}>Progress photo</Text>
+            <Text style={styles.formHint}>Choose a category for the Photos grid.</Text>
+            <View style={styles.catRow}>
+              {PHOTO_CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.chipSm, category === cat && styles.chipActive]}
+                  onPress={() => setCategory(cat)}
+                >
+                  <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>
+                    {getCategoryLabel(cat)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={styles.disclaimerBox}>
-              <Text style={styles.disclaimerTitle}>{FORM_UPLOAD_DISCLAIMER.title}</Text>
-              <Text style={styles.disclaimerBody}>{FORM_UPLOAD_DISCLAIMER.body}</Text>
-              <Text style={styles.disclaimerLiability}>{FORM_UPLOAD_DISCLAIMER.liability}</Text>
+              <Text style={styles.disclaimerTitle}>{PHOTO_UPLOAD_DISCLAIMER.title}</Text>
+              <Text style={styles.disclaimerBody}>{PHOTO_UPLOAD_DISCLAIMER.body}</Text>
             </View>
             <TouchableOpacity
               style={styles.checkboxRow}
-              onPress={() => setFormDisclaimerAccepted((v) => !v)}
+              onPress={() => setPhotoDisclaimerAccepted((v) => !v)}
               disabled={uploading}
             >
-              <View style={[styles.checkbox, formDisclaimerAccepted && styles.checkboxChecked]}>
-                {formDisclaimerAccepted ? <Text style={styles.checkmark}>✓</Text> : null}
+              <View style={[styles.checkbox, photoDisclaimerAccepted && styles.checkboxChecked]}>
+                {photoDisclaimerAccepted ? <Text style={styles.checkmark}>✓</Text> : null}
               </View>
-              <Text style={styles.checkboxLabel}>{FORM_UPLOAD_DISCLAIMER.checkbox}</Text>
+              <Text style={styles.checkboxLabel}>{PHOTO_UPLOAD_DISCLAIMER.checkbox}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -233,17 +201,15 @@ export default function UploadScreen() {
           </View>
         )}
 
-        {!isForm && (
-          <Input
-            placeholder={isText ? 'Ask the community...' : 'Caption'}
-            value={caption}
-            onChangeText={setCaption}
-            multiline
-          />
-        )}
+        <Input
+          placeholder={isText ? 'Ask the community...' : isPhoto ? 'Caption (optional)' : 'Caption'}
+          value={caption}
+          onChangeText={setCaption}
+          multiline
+        />
 
-        {mediaType === 'video' && (
-          <Button title={mediaUri ? 'Change video' : 'Choose video'} onPress={pickMedia} variant="secondary" disabled={uploading} />
+        {!isText && (
+          <Button title={mediaUri ? 'Change media' : 'Choose media'} onPress={pickMedia} variant="secondary" disabled={uploading} />
         )}
 
         <View style={styles.publish}>
@@ -285,9 +251,9 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: Colors.red, backgroundColor: 'rgba(230,57,70,0.1)' },
   chipText: { color: Colors.textMuted, fontSize: 13, fontWeight: '600' },
   chipTextActive: { color: Colors.red },
-  formSection: { gap: Spacing.sm },
+  photoForm: { gap: Spacing.sm },
   formTitle: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  formHint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.xs, lineHeight: 17 },
+  formHint: { color: Colors.textMuted, fontSize: 12, marginBottom: Spacing.xs },
   disclaimerBox: {
     backgroundColor: Colors.cardBg,
     borderRadius: Radius.md,
@@ -298,7 +264,6 @@ const styles = StyleSheet.create({
   },
   disclaimerTitle: { color: Colors.textPrimary, fontSize: 14, fontWeight: '700' },
   disclaimerBody: { color: Colors.textMuted, fontSize: 12, lineHeight: 18 },
-  disclaimerLiability: { color: Colors.textMuted, fontSize: 11, lineHeight: 16, fontStyle: 'italic', marginTop: Spacing.xs },
   checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginTop: Spacing.xs },
   checkbox: {
     width: 22,

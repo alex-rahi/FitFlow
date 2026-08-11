@@ -22,8 +22,8 @@ export function PeekPreview({ item, theme, variant, label }: Props) {
   const isHorizontal = variant === 'horizontal';
   const mediaTag =
     item?.type === 'post'
-      ? item.post.media_type === 'form'
-        ? 'Form check'
+      ? item.post.media_type === 'photo'
+        ? 'Photo'
         : item.post.media_type === 'text'
           ? 'Thread'
           : 'Video'

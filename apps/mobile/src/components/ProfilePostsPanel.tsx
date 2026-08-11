@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { FeedViewId, filterPostsForFeedView } from '../constants/categories';
 import { VideoPost } from './VideoCard';
 import { Colors, Radius, Spacing } from '../constants/theme';
@@ -19,8 +19,8 @@ export function ProfilePostsPanel({ posts, view = 'feed', onOpen }: Props) {
   if (filtered.length === 0) {
     const emptyCopy = view === 'community'
       ? { title: 'No threads yet', subtitle: 'Start a community thread from Upload.' }
-      : view === 'form'
-        ? { title: 'No form checks yet', subtitle: 'Post a technique clip from Upload → Form.' }
+      : view === 'photos'
+        ? { title: 'No photos yet', subtitle: 'Upload a progress pic from the Upload tab.' }
         : { title: 'No videos yet', subtitle: 'Upload a workout video from the Upload tab.' };
     return (
       <View style={styles.empty}>
@@ -43,19 +43,26 @@ export function ProfilePostsPanel({ posts, view = 'feed', onOpen }: Props) {
     );
   }
 
-  if (view === 'form') {
+  if (view === 'photos') {
     return (
-      <View style={styles.threadList}>
-        {filtered.map((post) => (
-          <View key={post.id} style={styles.threadItem}>
-            <Text style={styles.threadCaption} numberOfLines={1}>
-              {post.workout_form?.exercise ?? post.caption ?? 'Form check'}
-            </Text>
-            <Text style={styles.threadMeta} numberOfLines={2}>
-              {post.workout_form?.focus_points?.join(' · ') ?? '—'}
-            </Text>
-            <Text style={styles.threadMeta}>♥ {post.like_count} · 💬 {post.comment_count}</Text>
-          </View>
+      <View style={styles.grid}>
+        {filtered.map((post, index) => (
+          <TouchableOpacity
+            key={post.id}
+            style={styles.gridCard}
+            activeOpacity={0.85}
+            onPress={() => onOpen?.(post, index)}
+          >
+            <View style={styles.gridThumb}>
+              {post.media_type === 'photo' && post.photo_uri ? (
+                <Image source={{ uri: post.photo_uri }} style={styles.gridPhoto} resizeMode="cover" />
+              ) : (
+                <Text style={styles.photoIcon}>📷</Text>
+              )}
+            </View>
+            <Text style={styles.gridCaption} numberOfLines={2}>{post.caption ?? 'Untitled'}</Text>
+            <Text style={styles.gridMeta}>♥ {post.like_count}</Text>
+          </TouchableOpacity>
         ))}
       </View>
     );

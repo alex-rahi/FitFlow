@@ -2,9 +2,8 @@ import {
   ApiFeedCategory,
   FeedViewId,
   filterPostsForFeedView,
-  FORM_CATEGORIES,
+  PHOTO_CATEGORIES,
 } from '../constants/categories';
-import { formCheckCaption, WorkoutFormData } from '../constants/workoutForm';
 import {
   PLACEHOLDER_THREAD_COMMENTS,
   ThreadComment,
@@ -12,7 +11,7 @@ import {
 } from '../constants/threadComments';
 import {
   PLACEHOLDER_POSTS,
-  PLACEHOLDER_WORKOUT_FORMS,
+  PLACEHOLDER_RECIPE_PHOTOS,
   PLACEHOLDER_PROFILE,
   PLACEHOLDER_USERS,
   PLACEHOLDER_NOTIFICATIONS,
@@ -110,7 +109,7 @@ class ApiClient {
           : PLACEHOLDER_POSTS.filter((p) => p.category === category);
         posts = mergePublishedUploads(
           posts,
-          category === 'main_feed' ? 'feed' : category === 'advice' ? 'community' : 'form',
+          category === 'main_feed' ? 'feed' : category === 'advice' ? 'community' : 'photos',
         );
         return { posts, next_cursor: null };
       }
@@ -123,18 +122,18 @@ class ApiClient {
       return this.getFeed(cursor, 'advice');
     }
 
-    if (view === 'form') {
+    if (view === 'photos') {
       if (isDemoMode()) {
         await delay(200);
-        const posts = mergePublishedUploads([...PLACEHOLDER_WORKOUT_FORMS], 'form');
-        return { posts: filterPostsForFeedView(posts, 'form'), next_cursor: null };
+        const posts = mergePublishedUploads([...PLACEHOLDER_RECIPE_PHOTOS], 'photos');
+        return { posts: filterPostsForFeedView(posts, 'photos'), next_cursor: null };
       }
       const pages = await Promise.all(
-        FORM_CATEGORIES.map((category) => this.getFeed(cursor, category)),
+        PHOTO_CATEGORIES.map((category) => this.getFeed(cursor, category)),
       );
       const posts = pages
         .flatMap((page) => page.posts)
-        .filter((post: { media_type?: string }) => post.media_type === 'form');
+        .filter((post: { media_type?: string }) => post.media_type === 'photo');
       return { posts, next_cursor: pages.find((page) => page.next_cursor)?.next_cursor ?? null };
     }
 
@@ -149,17 +148,17 @@ class ApiClient {
     caption?: string,
     category: string = 'workouts',
     mediaType: MediaType = 'video',
-    workoutForm?: WorkoutFormData | null,
+    photoUri?: string | null,
   ) => {
     if (isDemoMode() && !isLocalYoloMode()) {
       await delay(300);
       const post = {
         id: `post-${Date.now()}`,
         user_id: PLACEHOLDER_USER_ID,
-        caption: workoutForm ? formCheckCaption(workoutForm) : caption,
+        caption,
         category,
         media_type: mediaType,
-        workout_form: workoutForm ?? null,
+        photo_uri: photoUri ?? null,
         status: 'processing',
         moderation_decision: null,
         like_count: 0,
@@ -181,10 +180,10 @@ class ApiClient {
     });
     getUploadStore().unshift({
       ...created,
-      caption: workoutForm ? formCheckCaption(workoutForm) : caption,
+      caption,
       category,
       media_type: mediaType,
-      workout_form: workoutForm ?? null,
+      photo_uri: photoUri ?? null,
       status: 'processing',
       author: created.author ?? { username: 'you', display_name: 'You' },
     });
@@ -199,7 +198,7 @@ class ApiClient {
     } catch {
       if (isDemoMode()) {
         await delay(200);
-        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_WORKOUT_FORMS, ...getUploadStore().filter((p) => p.status === 'published')];
+        const all = [...PLACEHOLDER_POSTS, ...PLACEHOLDER_RECIPE_PHOTOS, ...getUploadStore().filter((p) => p.status === 'published')];
         return all.filter(
           (post) => post.user_id === userId || userId === PLACEHOLDER_USER_ID,
         );
@@ -250,7 +249,7 @@ class ApiClient {
   };
 
   /** Upload media to the backend for local YOLO moderation. */
-  uploadMediaFile = async (postId: string, uri: string) => {
+  uploadMediaFile = async (postId: string, uri: string, mediaType: 'video' | 'photo') => {
     if (isDemoMode() && !isLocalYoloMode()) {
       await delay(600);
       return;
@@ -262,8 +261,9 @@ class ApiClient {
     const response = await fetch(uri);
     if (!response.ok) throw new Error('Could not read the selected media file');
     const blob = await response.blob();
+    const ext = mediaType === 'photo' ? 'jpg' : 'mp4';
     const form = new FormData();
-    form.append('file', blob, 'upload.mp4');
+    form.append('file', blob, `upload.${ext}`);
 
     const res = await fetch(`${API_URL}/api/v1/moderation/posts/${postId}/upload`, {
       method: 'POST',
@@ -278,15 +278,13 @@ class ApiClient {
   };
 
   /** Runs YOLO moderation and auto-publishes on pass — no manual review queue. */
-  /** Form posts skip media upload — moderation runs on text metadata only. */
   runYoloModeration = async (postId: string) => {
     const store = getUploadStore();
     const post = store.find((p) => String(p.id) === String(postId));
     const isText = post?.media_type === 'text';
-    const isForm = post?.media_type === 'form';
 
     if (isDemoMode() && !isLocalYoloMode()) {
-      await delay(isText || isForm ? 600 : 1200);
+      await delay(isText ? 600 : 1200);
       if (post) {
         post.status = 'published';
         post.moderation_decision = 'publish';

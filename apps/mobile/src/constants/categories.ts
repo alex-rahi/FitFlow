@@ -1,12 +1,12 @@
 export type PostCategoryId = 'workouts' | 'equipment' | 'nutrition' | 'prs' | 'advice';
 
-export type MediaType = 'video' | 'form' | 'text';
+export type MediaType = 'video' | 'photo' | 'text';
 
-export type FeedViewId = 'feed' | 'form' | 'community';
+export type FeedViewId = 'feed' | 'photos' | 'community';
 
 export type ApiFeedCategory = PostCategoryId | 'main_feed';
 
-export type FeedLaneId = ApiFeedCategory | 'form' | 'community';
+export type FeedLaneId = ApiFeedCategory | 'photos' | 'community';
 
 export type UploadCategoryId = PostCategoryId;
 
@@ -23,7 +23,7 @@ export interface FeedView {
 
 export const TAB_VIEWS: FeedView[] = [
   { id: 'feed', label: 'Feed', description: 'Fitness videos ranked by engagement', layout: 'scroll' },
-  { id: 'form', label: 'Form', description: 'Form-check clips and technique feedback from the community', layout: 'scroll' },
+  { id: 'photos', label: 'Photos', description: 'Progress pics and gym snapshots', layout: 'grid' },
   { id: 'community', label: 'Community', description: 'Training tips and discussion threads', layout: 'thread' },
 ];
 
@@ -34,11 +34,18 @@ export const FEED_LANES: { id: FeedLaneId; label: string }[] = [
   { id: 'equipment', label: 'Equipment' },
   { id: 'nutrition', label: 'Nutrition' },
   { id: 'prs', label: 'PRs' },
-  { id: 'form', label: 'Form' },
+  { id: 'photos', label: 'Photos' },
   { id: 'community', label: 'Talk' },
 ];
 
-export const FORM_CATEGORIES: PostCategoryId[] = ['workouts'];
+export const PHOTO_CATEGORIES: PostCategoryId[] = ['workouts', 'equipment', 'nutrition', 'prs'];
+
+export const PHOTO_UPLOAD_DISCLAIMER = {
+  title: 'Before you post',
+  body:
+    'Progress photos are scanned by our YOLO moderation pipeline. Only post gym-related content you own or have permission to share. No nudity, harassment, or unrelated imagery — violations are auto-rejected.',
+  checkbox: 'I understand and agree to these guidelines',
+};
 
 export function isEquipmentPost(post: {
   category?: string | null;
@@ -47,8 +54,8 @@ export function isEquipmentPost(post: {
   return post.category === 'equipment' || (post.topics?.includes('equipment') ?? false);
 }
 
-export function isFormCategory(category?: string | null): boolean {
-  return FORM_CATEGORIES.includes(category as PostCategoryId);
+export function isPhotoCategory(category?: string | null): boolean {
+  return PHOTO_CATEGORIES.includes(category as PostCategoryId);
 }
 
 export function isAdviceCategory(category?: string | null): boolean {
@@ -64,11 +71,11 @@ export function getFeedViewLabel(id: FeedViewId): string {
 }
 
 export function isVideoPost(post: { media_type?: string | null }): boolean {
-  return post.media_type !== 'form' && post.media_type !== 'text';
+  return post.media_type !== 'photo' && post.media_type !== 'text';
 }
 
-export function isFormPost(post: { media_type?: string | null }): boolean {
-  return post.media_type === 'form';
+export function isPhotoPost(post: { media_type?: string | null }): boolean {
+  return post.media_type === 'photo';
 }
 
 export function isTextPost(post: { media_type?: string | null }): boolean {
@@ -82,8 +89,8 @@ export function filterPostsForFeedView<T extends { category?: string | null; med
   switch (view) {
     case 'feed':
       return posts.filter((post) => isVideoPost(post) && post.category !== 'advice');
-    case 'form':
-      return posts.filter((post) => isFormPost(post) && isFormCategory(post.category));
+    case 'photos':
+      return posts.filter((post) => isPhotoPost(post) && isPhotoCategory(post.category));
     case 'community':
       return posts.filter((post) => isAdviceCategory(post.category) || isTextPost(post));
     default:
@@ -95,10 +102,10 @@ export function filterPostsForLane<T extends { category?: string | null; media_t
   posts: T[],
   laneId: FeedLaneId,
 ): T[] {
-  if (laneId === 'form') return filterPostsForFeedView(posts, 'form');
+  if (laneId === 'photos') return filterPostsForFeedView(posts, 'photos');
   if (laneId === 'community') return filterPostsForFeedView(posts, 'community');
   const scrollMedia = posts.filter(
-    (post) => isVideoPost(post) && post.category !== 'advice',
+    (post) => (isVideoPost(post) || isPhotoPost(post)) && post.category !== 'advice',
   );
   if (laneId === 'main_feed') return scrollMedia;
   if (laneId === 'equipment') {
@@ -123,6 +130,6 @@ export function getUploadDestinationForCategory(
   mediaType: MediaType = 'video',
 ): UploadDestination {
   if (mediaType === 'text' || category === 'advice') return 'community';
-  if (mediaType === 'form') return 'form';
+  if (mediaType === 'photo') return 'photos';
   return 'feed';
 }
