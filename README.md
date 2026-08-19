@@ -28,8 +28,8 @@ GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI 
 
 <table>
   <tr>
-    <td align="center"><b>For You feed</b><br><img src="screenshots/feed_for_you.png" alt="GymTok For You feed" width="220"></td>
     <td align="center"><b>Workouts lane</b><br><img src="screenshots/feed_workouts.png" alt="GymTok Workouts feed" width="220"></td>
+    <td align="center"><b>For You feed</b><br><img src="screenshots/feed_for_you.png" alt="GymTok For You feed" width="220"></td>
     <td align="center"><b>Upload</b><br><img src="screenshots/upload.png" alt="GymTok upload screen" width="220"></td>
   </tr>
 </table>
