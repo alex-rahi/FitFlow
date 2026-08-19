@@ -14,11 +14,11 @@ function BoundingBoxOverlay({ detections }: { detections: ReviewItem['detections
     <div className="relative w-full h-full">
       {detections.map((d, i) => {
         const bb = d.bounding_box as { x1?: number; y1?: number; x2?: number; y2?: number } | undefined;
-        if (bb?.x1 == null || bb.y1 == null || bb.x2 == null || bb.y2 == null) return null;
+        if (!bb?.x1) return null;
         const left = (bb.x1 / 500) * 100;
         const top = (bb.y1 / 600) * 100;
-        const width = ((bb.x2 - bb.x1) / 500) * 100;
-        const height = ((bb.y2 - bb.y1) / 600) * 100;
+        const width = ((bb.x2! - bb.x1) / 500) * 100;
+        const height = ((bb.y2! - bb.y1) / 600) * 100;
         return (
           <div
             key={i}
@@ -97,11 +97,11 @@ export default function ReviewPage() {
                       <p className="text-white font-medium text-sm">
                         @{item.post?.author?.username ?? 'unknown'}
                       </p>
-                      {item.post?.category ? (
+                      {item.post?.category && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600/20 text-red-400 font-medium">
-                          {String(item.post.category).replace('_', ' ')}
+                          {item.post.category.replace('_', ' ')}
                         </span>
-                      ) : null}
+                      )}
                     </div>
                     <p className="text-zinc-500 text-xs mt-1 line-clamp-2">
                       {item.post?.caption ?? 'No caption'}

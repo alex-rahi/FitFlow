@@ -33,7 +33,6 @@ export interface ReviewItem {
     caption: string | null;
     thumbnail_url: string | null;
     status: string;
-    category?: string | null;
     author: { username: string; display_name: string | null } | null;
   } | null;
   detections: Array<{ label: string; confidence: number; bounding_box: object }>;
