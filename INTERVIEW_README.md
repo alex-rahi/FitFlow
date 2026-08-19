@@ -78,12 +78,14 @@ Login with **any email/password** in placeholder mode.
 
 ## Screenshots
 
+Full app capture: **[screenshots/README.md](screenshots/README.md)** — 15 mobile screens + 3 admin screens.
+
 | | |
 |--|--|
-| Welcome | `screenshots/01_welcome_screen.png` |
-| Video feed | `screenshots/02_video_feed.png` |
-| Admin | `screenshots/03_admin_dashboard.png` |
-| Live For You | `screenshots/04_feed_for_you.png` |
+| Welcome | `screenshots/mobile/05_welcome.png` |
+| Feed (live) | `screenshots/mobile/10_feed_live.png` |
+| Upload | `screenshots/mobile/11_upload.png` |
+| Admin review | `screenshots/admin/02_review_queue.png` |
 
 ---
 

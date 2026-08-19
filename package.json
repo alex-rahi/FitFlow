@@ -1,0 +1,13 @@
+{
+  "name": "gymtok-everything",
+  "private": true,
+  "description": "GymTok interview repo — full codebase, docs, screenshots",
+  "scripts": {
+    "screenshots:mobile": "node scripts/capture-screenshots.js",
+    "screenshots:admin": "ADMIN_BASE=http://127.0.0.1:3001 node scripts/capture-screenshots.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "serve": "^14.2.6"
+  }
+}
