@@ -1,129 +1,72 @@
-Project is live at https://gym-tok-demo-v3.vercel.app
-
 # GymTok
 
-**Cross-platform social fitness platform with AI-assisted content moderation**
+**TikTok-style social fitness app** — vertical video feed, category lanes, uploads, AI-assisted moderation.
 
-GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI backend, Next.js moderation dashboard, PostgreSQL schema, AI worker pipeline, Docker Compose, and Kubernetes manifests.
+**Live demo:** https://gym-tok-demo-v3.vercel.app
 
-> **Mobile app:** GymTok fitness community — vertical video feed with **← → category swipe** and **↑ ↓ video scroll**, photo grid, community threads, video/photo/thread uploads, likes, comments, minimal ads, and engagement-based feed ranking.
-
-> **Interview repo:** See [INTERVIEW_README.md](INTERVIEW_README.md) and [docs/INTERVIEW_PACKAGE.md](docs/INTERVIEW_PACKAGE.md) for architecture, scaling, monetization, and demo script.
-
-Project is live at https://gym-tok-demo-v3.vercel.app
-
-# GymTok
-
-**Cross-platform social fitness platform with AI-assisted content moderation**
-
-GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI backend, Next.js moderation dashboard, PostgreSQL schema, AI worker pipeline, Docker Compose, and Kubernetes manifests.
-
-> **Mobile app:** GymTok fitness community — vertical video feed with **← → category swipe** and **↑ ↓ video scroll**, photo grid, community threads, video/photo/thread uploads, likes, comments, minimal ads, and engagement-based feed ranking.
-
-> **Interview repo:** See [INTERVIEW_README.md](INTERVIEW_README.md) and [docs/INTERVIEW_PACKAGE.md](docs/INTERVIEW_PACKAGE.md) for architecture, scaling, monetization, and demo script.
-
-> **Demo mode:** Runs with placeholder credentials — no cloud account required. See [Demo Guide](docs/DEMO_GUIDE.md).
-
-## App preview
-
-<table>
-  <tr>
-    <td align="center"><b>Workouts lane</b><br><img src="screenshots/feed_workouts.png" alt="GymTok Workouts feed" width="220"></td>
-    <td align="center"><b>For You feed</b><br><img src="screenshots/feed_for_you.png" alt="GymTok For You feed" width="220"></td>
-    <td align="center"><b>Upload</b><br><img src="screenshots/upload.png" alt="GymTok upload screen" width="220"></td>
-  </tr>
-</table>
-
-<p align="center"><i>Swipe ← → between categories · Scroll ↑ ↓ through videos · Video, photo, or thread uploads</i></p>
-
-## More screens
-
-### Welcome
-
-<img src="screenshots/01_welcome_screen.png" alt="GymTok welcome screen" width="280">
-
-### Moderation dashboard
-
-![GymTok moderation dashboard](screenshots/03_admin_dashboard.png)
+---
 
 ## Architecture
 
-```
-React Native (Expo)  ──HTTPS──▶  Supabase Auth (JWT)
-       │                                │
-       ▼                                ▼
-   FastAPI Backend  ◀──────────▶  PostgreSQL + Storage
-       │
-       ▼
-   AI Worker Pipeline (YOLO + Rules Engine)
-       │
-       ▼
-   Admin Dashboard (Manual Review)
-```
+```mermaid
+flowchart TB
+    subgraph users [Users]
+        Mobile["Expo Web / React Native"]
+    end
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/MIGRATION_ASSESSMENT.md](docs/MIGRATION_ASSESSMENT.md) (AWS migration plan).
+    subgraph edge [Edge]
+        Vercel["Vercel — mobile"]
+        Render["Render — FastAPI API"]
+    end
 
-## Quick Start
+    subgraph supabase [Supabase]
+        Auth["Auth JWT"]
+        PG["PostgreSQL"]
+        Storage["Storage"]
+    end
 
-```bash
-cp .env.example .env
-```
+    subgraph ops [Operations]
+        Admin["Next.js Admin"]
+        Worker["YOLO Worker"]
+    end
 
-Keep placeholder mode enabled:
-
-```env
-USE_PLACEHOLDERS=true
-EXPO_PUBLIC_USE_PLACEHOLDERS=true
-```
-
-| Service | Demo behavior |
-|---------|---------------|
-| **Mobile** | Log in with any email/password |
-| **Admin** | Sample moderation stats + review queue |
-| **Backend** | Accepts `Bearer placeholder-access-token` |
-
-### Backend
-
-```bash
-cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+    Mobile -->|login| Auth
+    Mobile -->|API| Render
+    Mobile -->|upload| Storage
+    Render --> PG
+    Render --> Storage
+    Admin --> Render
+    Worker -.-> PG
+    Vercel --> Mobile
 ```
 
-### Mobile
+**Scale path:** Supabase MVP → EC2 t3.micro → RDS + S3 + CloudFront → SQS workers → EKS
 
-```bash
-cd apps/mobile && npm install && npx expo start --web
-```
+---
 
-### Admin
-
-```bash
-cd apps/admin && npm install && npm run dev
-```
-
-### All services
-
-```bash
-docker compose up --build
-```
-
-## Documentation
-
-- [Demo guide](docs/DEMO_GUIDE.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [AWS migration assessment](docs/MIGRATION_ASSESSMENT.md)
-- [API documentation](docs/API_DOCUMENTATION.md)
-- [Deployment guide](docs/DEPLOYMENT_GUIDE.md)
-- [Interview one-pager](docs/INTERVIEW_ONE_PAGER.md)
-
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|------------|
 | Mobile | React Native, Expo, TypeScript |
-| Backend | FastAPI, asyncpg, Pydantic |
+| Backend | FastAPI, Python, Pydantic |
+| Database | PostgreSQL (Supabase) |
+| Auth | Supabase JWT |
+| Storage | Supabase Storage → S3 |
+| AI | YOLOv8, OpenCV, rules engine |
 | Admin | Next.js, Tailwind |
-| AI | YOLOv8, rules engine |
-| Deploy | Docker Compose, Kubernetes |
+| Deploy | Vercel, Render, Docker, Kubernetes |
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Workouts lane</b><br><img src="screenshots/feed_workouts.png" alt="Workouts feed" width="240"></td>
+    <td align="center"><b>For You feed</b><br><img src="screenshots/feed_for_you.png" alt="For You feed" width="240"></td>
+    <td align="center"><b>Upload</b><br><img src="screenshots/upload.png" alt="Upload screen" width="240"></td>
+  </tr>
+</table>
+
+<p align="center"><i>← → category swipe · ↑ ↓ video scroll · video, photo, or thread uploads</i></p>
