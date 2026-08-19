@@ -10,25 +10,41 @@ GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI 
 
 > **Interview repo:** See [INTERVIEW_README.md](INTERVIEW_README.md) and [docs/INTERVIEW_PACKAGE.md](docs/INTERVIEW_PACKAGE.md) for architecture, scaling, monetization, and demo script.
 
+Project is live at https://gym-tok-demo-v3.vercel.app
+
+# GymTok
+
+**Cross-platform social fitness platform with AI-assisted content moderation**
+
+GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI backend, Next.js moderation dashboard, PostgreSQL schema, AI worker pipeline, Docker Compose, and Kubernetes manifests.
+
+> **Mobile app:** GymTok fitness community — vertical video feed with **← → category swipe** and **↑ ↓ video scroll**, photo grid, community threads, video/photo/thread uploads, likes, comments, minimal ads, and engagement-based feed ranking.
+
+> **Interview repo:** See [INTERVIEW_README.md](INTERVIEW_README.md) and [docs/INTERVIEW_PACKAGE.md](docs/INTERVIEW_PACKAGE.md) for architecture, scaling, monetization, and demo script.
+
 > **Demo mode:** Runs with placeholder credentials — no cloud account required. See [Demo Guide](docs/DEMO_GUIDE.md).
 
-## Demo Screens
+## App preview
 
-### Mobile Welcome Screen
+<table>
+  <tr>
+    <td align="center"><b>For You feed</b><br><img src="screenshots/feed_for_you.png" alt="GymTok For You feed" width="220"></td>
+    <td align="center"><b>Workouts lane</b><br><img src="screenshots/feed_workouts.png" alt="GymTok Workouts feed" width="220"></td>
+    <td align="center"><b>Upload</b><br><img src="screenshots/upload.png" alt="GymTok upload screen" width="220"></td>
+  </tr>
+</table>
+
+<p align="center"><i>Swipe ← → between categories · Scroll ↑ ↓ through videos · Video, photo, or thread uploads</i></p>
+
+## More screens
+
+### Welcome
 
 <img src="screenshots/01_welcome_screen.png" alt="GymTok welcome screen" width="280">
 
-### Video Feed
-
-![GymTok video feed](screenshots/02_video_feed.png)
-
-### Moderation Dashboard
+### Moderation dashboard
 
 ![GymTok moderation dashboard](screenshots/03_admin_dashboard.png)
-
-### Live For You Feed
-
-<img src="screenshots/04_feed_for_you.png" alt="GymTok For You feed" width="280">
 
 ## Architecture
 

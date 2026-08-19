@@ -28,7 +28,7 @@
 
 ## Product screenshot (live feed)
 
-![GymTok For You feed](screenshots/04_feed_for_you.png)
+![GymTok For You feed](screenshots/feed_for_you.png)
 
 *For You · Workouts · @alex_lifts · 500 lb deadlift PR · category swipe + vertical scroll*
 
