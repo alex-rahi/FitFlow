@@ -8,6 +8,8 @@ GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI 
 
 > **Mobile app:** GymTok fitness community — vertical video feed with **← → category swipe** and **↑ ↓ video scroll**, photo grid, community threads, video/photo/thread uploads, likes, comments, minimal ads, and engagement-based feed ranking.
 
+> **Interview repo:** See [INTERVIEW_README.md](INTERVIEW_README.md) and [docs/INTERVIEW_PACKAGE.md](docs/INTERVIEW_PACKAGE.md) for architecture, scaling, monetization, and demo script.
+
 > **Demo mode:** Runs with placeholder credentials — no cloud account required. See [Demo Guide](docs/DEMO_GUIDE.md).
 
 ## Demo Screens
@@ -23,6 +25,10 @@ GymTok is a full-stack fitness video platform: React Native mobile app, FastAPI 
 ### Moderation Dashboard
 
 ![GymTok moderation dashboard](screenshots/03_admin_dashboard.png)
+
+### Live For You Feed
+
+<img src="screenshots/04_feed_for_you.png" alt="GymTok For You feed" width="280">
 
 ## Architecture
 
