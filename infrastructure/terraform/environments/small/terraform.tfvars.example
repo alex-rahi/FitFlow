@@ -1,0 +1,4 @@
+aws_region  = "us-east-1"
+project     = "gymtok"
+environment = "dev"
+# db_password = "set-via-TF_VAR_db_password"
