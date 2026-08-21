@@ -42,8 +42,6 @@ flowchart TB
 
 **Scale path:** Supabase MVP → EC2 t3.micro → RDS + S3 + CloudFront → SQS workers → EKS
 
-**AWS build (Phase 2):** [docs/AWS_BUILD.md](docs/AWS_BUILD.md) · Terraform small stack under `infrastructure/terraform/environments/small/`
-
 ---
 
 ## Tech stack
